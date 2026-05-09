@@ -1,0 +1,1772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0d1117">
+<title>Claude Code Mobile</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --bg2: #161b22;
+    --bg3: #21262d;
+    --bg4: #30363d;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text2: #8b949e;
+    --text3: #6e7681;
+    --accent: #d97706;
+    --accent2: #f59e0b;
+    --blue: #58a6ff;
+    --green: #3fb950;
+    --red: #f85149;
+    --purple: #bc8cff;
+    --cyan: #79c0ff;
+    --orange: #ffa657;
+    --radius: 8px;
+    --font: 'SF Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--font); font-size: 13px; }
+
+  /* Layout */
+  #app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
+  #topbar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--bg2); border-bottom: 1px solid var(--border); min-height: 48px; flex-shrink: 0; }
+  #topbar .logo { display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--accent); font-size: 15px; flex: 1; }
+  #topbar .logo svg { flex-shrink: 0; }
+  #main { display: flex; flex: 1; overflow: hidden; }
+  #sidebar { width: 260px; background: var(--bg2); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; transition: transform 0.25s ease; }
+  #sidebar.hidden { transform: translateX(-260px); position: absolute; z-index: 50; height: calc(100% - 48px); }
+  #content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  #bottombar { display: flex; background: var(--bg2); border-top: 1px solid var(--border); padding: 4px; gap: 4px; flex-shrink: 0; }
+  .tab-btn { flex: 1; padding: 8px 4px; border: none; background: transparent; color: var(--text2); cursor: pointer; border-radius: var(--radius); font-size: 11px; display: flex; flex-direction: column; align-items: center; gap: 2px; transition: all 0.15s; }
+  .tab-btn svg { width: 18px; height: 18px; }
+  .tab-btn.active { color: var(--accent); background: rgba(217,119,6,0.1); }
+  .tab-btn:active { opacity: 0.7; }
+
+  /* Panels */
+  .panel { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+  .panel.active { display: flex; }
+
+  /* Chat */
+  #chat-messages { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 12px; scroll-behavior: smooth; }
+  .msg { display: flex; gap: 8px; max-width: 100%; }
+  .msg.user { flex-direction: row-reverse; }
+  .msg-avatar { width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+  .msg.assistant .msg-avatar { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #000; }
+  .msg.user .msg-avatar { background: var(--blue); color: #000; }
+  .msg-bubble { max-width: calc(100% - 40px); padding: 10px 12px; border-radius: 12px; line-height: 1.5; word-break: break-word; }
+  .msg.assistant .msg-bubble { background: var(--bg2); border: 1px solid var(--border); border-top-left-radius: 4px; }
+  .msg.user .msg-bubble { background: var(--blue); color: #000; border-top-right-radius: 4px; }
+  .msg.system .msg-bubble { background: transparent; color: var(--text3); font-style: italic; font-size: 11px; border: 1px dashed var(--border); border-radius: 6px; padding: 6px 10px; max-width: 100%; }
+  .msg.system { justify-content: center; }
+  pre { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px; overflow-x: auto; margin: 6px 0; font-size: 12px; }
+  code { background: var(--bg3); padding: 1px 4px; border-radius: 3px; font-size: 12px; }
+  pre code { background: transparent; padding: 0; }
+  .thinking { color: var(--text3); font-style: italic; display: flex; align-items: center; gap: 6px; font-size: 12px; }
+  .thinking::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.3} }
+
+  /* Input area */
+  #input-area { padding: 8px 12px; background: var(--bg2); border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; }
+  #input-tools { display: flex; gap: 6px; flex-wrap: wrap; }
+  .input-tool-btn { padding: 4px 8px; background: var(--bg3); border: 1px solid var(--border); color: var(--text2); border-radius: 20px; font-size: 11px; cursor: pointer; font-family: var(--font); transition: all 0.15s; }
+  .input-tool-btn:hover, .input-tool-btn:active { background: var(--bg4); color: var(--text); }
+  #input-row { display: flex; gap: 8px; align-items: flex-end; }
+  #chat-input { flex: 1; background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 10px 12px; border-radius: 10px; font-family: var(--font); font-size: 13px; resize: none; min-height: 42px; max-height: 120px; outline: none; transition: border-color 0.15s; line-height: 1.4; }
+  #chat-input:focus { border-color: var(--accent); }
+  #send-btn { width: 40px; height: 40px; border-radius: 50%; background: var(--accent); border: none; color: #000; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s; }
+  #send-btn:active { transform: scale(0.92); }
+  #send-btn:disabled { opacity: 0.4; }
+
+  /* API Key input */
+  #api-key-area { padding: 12px; background: var(--bg3); border-radius: var(--radius); margin: 8px 12px; display: flex; gap: 8px; align-items: center; }
+  #api-key-input { flex: 1; background: var(--bg2); border: 1px solid var(--border); color: var(--text); padding: 8px 10px; border-radius: 6px; font-family: var(--font); font-size: 12px; outline: none; }
+  #api-key-input:focus { border-color: var(--accent); }
+
+  /* Sidebar */
+  #sidebar-header { padding: 12px; border-bottom: 1px solid var(--border); }
+  #sidebar-tabs { display: flex; border-bottom: 1px solid var(--border); }
+  .sidebar-tab { flex: 1; padding: 8px; text-align: center; cursor: pointer; font-size: 11px; color: var(--text2); border-bottom: 2px solid transparent; transition: all 0.15s; }
+  .sidebar-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  #sidebar-content { flex: 1; overflow-y: auto; }
+  .sidebar-section { padding: 8px; }
+  .section-title { font-size: 10px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; padding: 6px 4px 4px; }
+  .sidebar-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 6px; cursor: pointer; transition: background 0.15s; color: var(--text2); font-size: 12px; }
+  .sidebar-item:hover, .sidebar-item:active { background: var(--bg3); color: var(--text); }
+  .sidebar-item.active { background: rgba(217,119,6,0.15); color: var(--accent); }
+  .sidebar-item svg { width: 14px; height: 14px; flex-shrink: 0; }
+  .badge { margin-left: auto; background: var(--bg4); color: var(--text2); border-radius: 10px; padding: 1px 6px; font-size: 10px; }
+  .badge.green { background: rgba(63,185,80,0.2); color: var(--green); }
+
+  /* Code Editor */
+  #editor-panel { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+  #editor-panel.active { display: flex; }
+  #editor-toolbar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--bg2); border-bottom: 1px solid var(--border); overflow-x: auto; }
+  #file-tabs { display: flex; gap: 4px; flex: 1; overflow-x: auto; }
+  .file-tab { padding: 4px 12px; background: var(--bg3); border-radius: 4px; font-size: 12px; cursor: pointer; white-space: nowrap; color: var(--text2); border: 1px solid transparent; transition: all 0.15s; }
+  .file-tab.active { background: var(--bg); border-color: var(--border); color: var(--text); }
+  .file-tab .close { margin-left: 6px; opacity: 0.5; }
+  .file-tab .close:hover { opacity: 1; }
+  #code-editor { flex: 1; background: var(--bg); color: var(--text); border: none; padding: 16px; font-family: var(--font); font-size: 13px; resize: none; outline: none; line-height: 1.6; overflow: auto; tab-size: 2; }
+
+  /* Terminal */
+  #terminal-panel { display: none; flex-direction: column; flex: 1; overflow: hidden; background: #0a0a0a; }
+  #terminal-panel.active { display: flex; }
+  #terminal-output { flex: 1; overflow-y: auto; padding: 12px; font-family: var(--font); font-size: 13px; line-height: 1.5; white-space: pre-wrap; word-break: break-all; }
+  .term-line { margin-bottom: 2px; }
+  .term-prompt { color: var(--green); }
+  .term-cmd { color: var(--text); }
+  .term-output { color: var(--text2); }
+  .term-error { color: var(--red); }
+  .term-success { color: var(--green); }
+  #terminal-input-row { display: flex; align-items: center; padding: 8px 12px; border-top: 1px solid #222; gap: 6px; }
+  #term-prompt-label { color: var(--green); font-family: var(--font); white-space: nowrap; }
+  #terminal-input { flex: 1; background: transparent; border: none; color: var(--text); font-family: var(--font); font-size: 13px; outline: none; caret-color: var(--green); }
+
+  /* Files Panel */
+  #files-panel { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+  #files-panel.active { display: flex; }
+  #files-toolbar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--bg2); border-bottom: 1px solid var(--border); }
+  #files-toolbar .path { flex: 1; color: var(--text2); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #files-list { flex: 1; overflow-y: auto; }
+  .file-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid rgba(48,54,61,0.5); cursor: pointer; transition: background 0.15s; }
+  .file-item:active { background: var(--bg3); }
+  .file-item .file-icon { width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+  .file-item .file-name { flex: 1; font-size: 13px; }
+  .file-item .file-meta { font-size: 11px; color: var(--text3); }
+
+  /* Skills Panel */
+  #skills-panel { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+  #skills-panel.active { display: flex; }
+  .skills-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px; overflow-y: auto; }
+  .skill-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 14px; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; gap: 6px; }
+  .skill-card:active { transform: scale(0.97); border-color: var(--accent); }
+  .skill-card .skill-icon { font-size: 22px; }
+  .skill-card .skill-name { font-size: 12px; font-weight: 700; color: var(--text); }
+  .skill-card .skill-desc { font-size: 11px; color: var(--text3); line-height: 1.4; }
+  .skill-card .skill-cmd { font-size: 10px; color: var(--accent); margin-top: 2px; }
+
+  /* Agents Panel */
+  #agents-panel { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+  #agents-panel.active { display: flex; }
+  .agents-list { padding: 12px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
+  .agent-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 14px; cursor: pointer; transition: all 0.2s; }
+  .agent-card:active { border-color: var(--accent); }
+  .agent-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .agent-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .agent-name { font-weight: 700; font-size: 13px; }
+  .agent-type { font-size: 10px; color: var(--accent); background: rgba(217,119,6,0.1); padding: 2px 6px; border-radius: 10px; margin-top: 2px; display: inline-block; }
+  .agent-desc { font-size: 12px; color: var(--text2); line-height: 1.5; }
+  .agent-tools { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+  .tool-tag { font-size: 10px; background: var(--bg3); color: var(--text3); padding: 2px 6px; border-radius: 4px; }
+  .agent-btn { margin-top: 10px; padding: 8px; background: rgba(217,119,6,0.1); border: 1px solid rgba(217,119,6,0.3); color: var(--accent); border-radius: 6px; font-family: var(--font); font-size: 12px; cursor: pointer; width: 100%; text-align: center; transition: all 0.15s; }
+  .agent-btn:active { background: rgba(217,119,6,0.2); }
+
+  /* Settings */
+  #settings-panel { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+  #settings-panel.active { display: flex; }
+  .settings-scroll { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 12px; }
+  .settings-group { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .settings-group-title { padding: 10px 14px; font-size: 11px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid var(--border); background: var(--bg3); }
+  .settings-item { display: flex; align-items: center; padding: 12px 14px; border-bottom: 1px solid rgba(48,54,61,0.5); gap: 12px; }
+  .settings-item:last-child { border-bottom: none; }
+  .settings-label { flex: 1; }
+  .settings-label .label-title { font-size: 13px; }
+  .settings-label .label-desc { font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .toggle { width: 44px; height: 24px; background: var(--bg4); border-radius: 12px; cursor: pointer; position: relative; flex-shrink: 0; transition: background 0.2s; }
+  .toggle.on { background: var(--accent); }
+  .toggle::after { content: ''; position: absolute; width: 20px; height: 20px; background: #fff; border-radius: 50%; top: 2px; left: 2px; transition: left 0.2s; }
+  .toggle.on::after { left: 22px; }
+  select.settings-select { background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 6px 10px; border-radius: 6px; font-family: var(--font); font-size: 12px; outline: none; }
+  input.settings-input { background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 6px 10px; border-radius: 6px; font-family: var(--font); font-size: 12px; outline: none; width: 120px; }
+
+  /* Download Panel */
+  #download-panel { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+  #download-panel.active { display: flex; }
+  .download-scroll { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 12px; }
+  .download-hero { background: linear-gradient(135deg, rgba(217,119,6,0.2), rgba(88,166,255,0.1)); border: 1px solid var(--accent); border-radius: 12px; padding: 20px; text-align: center; }
+  .download-hero h2 { font-size: 18px; color: var(--accent); margin-bottom: 6px; }
+  .download-hero p { font-size: 12px; color: var(--text2); line-height: 1.5; }
+  .download-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .download-card h3 { font-size: 14px; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+  .download-card p { font-size: 12px; color: var(--text2); margin-bottom: 12px; line-height: 1.5; }
+  .download-btn { display: flex; align-items: center; gap: 8px; padding: 12px 16px; background: var(--accent); color: #000; border-radius: 8px; font-family: var(--font); font-size: 13px; font-weight: 700; cursor: pointer; border: none; width: 100%; justify-content: center; transition: all 0.15s; margin-bottom: 8px; }
+  .download-btn:active { transform: scale(0.97); }
+  .download-btn.secondary { background: var(--bg3); color: var(--text); border: 1px solid var(--border); }
+  .feature-list { display: flex; flex-direction: column; gap: 6px; }
+  .feature-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text2); }
+  .feature-item::before { content: '✓'; color: var(--green); font-weight: 700; }
+  .size-badge { font-size: 10px; background: var(--bg4); color: var(--text3); padding: 2px 8px; border-radius: 10px; margin-left: auto; }
+
+  /* Overlay */
+  #overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 40; backdrop-filter: blur(2px); }
+  #overlay.show { display: block; }
+
+  /* Modals */
+  .modal { display: none; position: fixed; inset: 0; z-index: 60; align-items: flex-end; justify-content: center; }
+  .modal.show { display: flex; }
+  .modal-content { background: var(--bg2); border: 1px solid var(--border); border-radius: 16px 16px 0 0; width: 100%; max-height: 85vh; overflow-y: auto; padding: 20px; }
+  .modal-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 16px; }
+  .modal-title { font-size: 16px; font-weight: 700; margin-bottom: 12px; }
+
+  /* Command palette */
+  #cmd-palette { display: none; position: fixed; inset: 0; z-index: 70; align-items: flex-start; justify-content: center; padding-top: 60px; }
+  #cmd-palette.show { display: flex; }
+  #cmd-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; width: calc(100% - 24px); max-width: 480px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+  #cmd-input { width: 100%; background: transparent; border: none; border-bottom: 1px solid var(--border); color: var(--text); padding: 14px 16px; font-family: var(--font); font-size: 14px; outline: none; }
+  #cmd-results { max-height: 300px; overflow-y: auto; }
+  .cmd-item { display: flex; align-items: center; gap: 10px; padding: 10px 16px; cursor: pointer; transition: background 0.1s; }
+  .cmd-item:hover, .cmd-item.focused { background: var(--bg3); }
+  .cmd-item .cmd-icon { width: 28px; height: 28px; border-radius: 6px; background: var(--bg4); display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+  .cmd-item .cmd-text { flex: 1; }
+  .cmd-item .cmd-name { font-size: 13px; }
+  .cmd-item .cmd-hint { font-size: 11px; color: var(--text3); }
+  .cmd-item .cmd-key { font-size: 10px; background: var(--bg4); color: var(--text2); padding: 2px 6px; border-radius: 4px; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 2px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border); }
+
+  /* Mobile specific */
+  @media (max-width: 600px) {
+    #sidebar { width: 85vw; }
+    .skills-grid { grid-template-columns: 1fr; }
+  }
+
+  /* Highlight.js tokens */
+  .hljs-keyword { color: var(--purple); }
+  .hljs-string { color: var(--green); }
+  .hljs-number { color: var(--orange); }
+  .hljs-comment { color: var(--text3); font-style: italic; }
+  .hljs-function { color: var(--blue); }
+  .hljs-variable { color: var(--cyan); }
+  .hljs-operator { color: var(--accent); }
+  .hljs-class { color: var(--orange); }
+  .hljs-title { color: var(--blue); }
+
+  /* Typing cursor */
+  .typing-cursor::after { content: '▋'; animation: blink 1s infinite; color: var(--accent); }
+  @keyframes blink { 0%,100%{opacity:1}50%{opacity:0} }
+
+  /* Status bar */
+  #status-bar { display: flex; align-items: center; gap: 8px; padding: 3px 12px; background: var(--bg3); font-size: 10px; color: var(--text3); border-top: 1px solid var(--border); flex-shrink: 0; }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+  .status-dot.red { background: var(--red); }
+  .status-dot.yellow { background: var(--accent); }
+  #status-model { margin-left: auto; color: var(--text2); }
+
+  /* Toast */
+  #toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 10px 16px; border-radius: 20px; font-size: 12px; z-index: 100; opacity: 0; transition: opacity 0.3s; pointer-events: none; white-space: nowrap; }
+  #toast.show { opacity: 1; }
+
+  /* Context menu */
+  .ctx-menu { display: none; position: fixed; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; z-index: 80; min-width: 160px; box-shadow: 0 8px 30px rgba(0,0,0,0.4); }
+  .ctx-menu.show { display: block; }
+  .ctx-item { padding: 10px 14px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 8px; transition: background 0.1s; }
+  .ctx-item:hover { background: var(--bg3); }
+  .ctx-item.danger { color: var(--red); }
+  .ctx-sep { height: 1px; background: var(--border); margin: 4px 0; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Top Bar -->
+  <div id="topbar">
+    <button onclick="toggleSidebar()" style="background:transparent;border:none;color:var(--text2);cursor:pointer;padding:4px;border-radius:6px;display:flex;align-items:center;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <div class="logo">
+      <svg width="22" height="22" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#d97706"/><text x="50" y="58" text-anchor="middle" fill="#000" font-size="38" font-weight="900" font-family="monospace">C</text></svg>
+      Claude Code
+    </div>
+    <button onclick="showCmdPalette()" style="background:transparent;border:none;color:var(--text2);cursor:pointer;padding:4px;border-radius:6px;display:flex;align-items:center;" title="Command Palette (/)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+    </button>
+    <button onclick="showApiKeyModal()" style="background:transparent;border:none;color:var(--text2);cursor:pointer;padding:4px;border-radius:6px;display:flex;align-items:center;" title="API Key">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+    </button>
+  </div>
+
+  <div id="main">
+    <!-- Sidebar -->
+    <div id="sidebar" class="hidden">
+      <div id="sidebar-header">
+        <div style="font-size:11px;color:var(--text3);margin-bottom:6px;">PROJECT</div>
+        <div style="font-size:13px;font-weight:700;" id="project-name">~/startercode</div>
+        <div style="font-size:11px;color:var(--green);margin-top:4px;display:flex;align-items:center;gap:4px;">
+          <span style="width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;"></span>
+          <span id="git-branch">main</span>
+        </div>
+      </div>
+      <div id="sidebar-tabs">
+        <div class="sidebar-tab active" onclick="switchSidebarTab('explorer',this)">Explorer</div>
+        <div class="sidebar-tab" onclick="switchSidebarTab('history',this)">History</div>
+        <div class="sidebar-tab" onclick="switchSidebarTab('sessions',this)">Sessions</div>
+      </div>
+      <div id="sidebar-content">
+        <div id="tab-explorer" class="sidebar-section">
+          <div class="section-title">Open Files</div>
+          <div id="open-files-list"></div>
+          <div class="section-title" style="margin-top:8px;">Recent</div>
+          <div class="sidebar-item" onclick="openFile('CLAUDE.md','md')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>CLAUDE.md<span class="badge">md</span></div>
+          <div class="sidebar-item" onclick="openFile('.claude/settings.json','json')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>settings.json<span class="badge">json</span></div>
+          <div class="sidebar-item" onclick="openFile('package.json','json')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>package.json<span class="badge">json</span></div>
+          <div class="section-title" style="margin-top:8px;">Git Status</div>
+          <div class="sidebar-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>No changes<span class="badge green">clean</span></div>
+        </div>
+        <div id="tab-history" class="sidebar-section" style="display:none;">
+          <div class="section-title">Conversation History</div>
+          <div id="history-list"></div>
+        </div>
+        <div id="tab-sessions" class="sidebar-section" style="display:none;">
+          <div class="section-title">Active Sessions</div>
+          <div class="sidebar-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>Main Session<span class="badge green">active</span></div>
+          <div class="sidebar-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>Agent: Explore<span class="badge">idle</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div id="content">
+
+      <!-- Chat Panel -->
+      <div class="panel active" id="chat-panel">
+        <div id="api-key-banner" style="display:none;padding:10px 12px;background:rgba(217,119,6,0.1);border-bottom:1px solid rgba(217,119,6,0.3);font-size:12px;color:var(--accent);cursor:pointer;" onclick="showApiKeyModal()">
+          ⚠ No API key set — tap to configure
+        </div>
+        <div id="chat-messages">
+          <div class="msg system"><div class="msg-bubble">Claude Code Mobile — v1.0.0 — Type / for commands</div></div>
+          <div class="msg assistant">
+            <div class="msg-avatar">C</div>
+            <div class="msg-bubble">
+              Welcome to <strong>Claude Code Mobile</strong>! I'm your AI coding assistant.<br><br>
+              I have access to:<br>
+              • <strong>15 Skills</strong> — /init, /review, /security-review, and more<br>
+              • <strong>8 Agents</strong> — Explore, Plan, Code, Test, and more<br>
+              • <strong>Full tool suite</strong> — Read, Write, Edit, Bash, WebSearch<br><br>
+              Set your API key via the key icon above, then ask me anything!
+            </div>
+          </div>
+        </div>
+        <div id="input-area">
+          <div id="input-tools">
+            <button class="input-tool-btn" onclick="insertSlashCmd('/init')">📋 /init</button>
+            <button class="input-tool-btn" onclick="insertSlashCmd('/review')">🔍 /review</button>
+            <button class="input-tool-btn" onclick="insertSlashCmd('/fix')">🔧 /fix</button>
+            <button class="input-tool-btn" onclick="insertSlashCmd('/explain')">💡 /explain</button>
+            <button class="input-tool-btn" onclick="attachFile()">📎 file</button>
+          </div>
+          <div id="input-row">
+            <textarea id="chat-input" placeholder="Message Claude Code... (/ for commands)" rows="1" oninput="autoResize(this);handleSlash(this.value)" onkeydown="handleInputKey(event)"></textarea>
+            <button id="send-btn" onclick="sendMessage()">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 2L11 13"/><path d="M22 2L15 22l-4-9-9-4 20-7z"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Editor Panel -->
+      <div class="panel" id="editor-panel">
+        <div id="editor-toolbar">
+          <div id="file-tabs">
+            <div class="file-tab active" id="tab-welcome">Welcome</div>
+          </div>
+          <button onclick="newFile()" style="background:transparent;border:none;color:var(--text2);cursor:pointer;padding:4px;font-size:18px;" title="New File">+</button>
+          <button onclick="saveFile()" style="background:transparent;border:none;color:var(--text2);cursor:pointer;padding:4px;font-size:11px;border:1px solid var(--border);border-radius:4px;" title="Save">Save</button>
+        </div>
+        <textarea id="code-editor" spellcheck="false" placeholder="// Start coding...">// Welcome to Claude Code Editor
+// Tap + to create a new file or open one from the sidebar
+
+function greet(name) {
+  return `Hello, ${name}! Welcome to Claude Code Mobile.`;
+}
+
+console.log(greet('Developer'));
+</textarea>
+      </div>
+
+      <!-- Terminal Panel -->
+      <div class="panel" id="terminal-panel">
+        <div id="terminal-output">
+          <div class="term-line"><span class="term-success">Claude Code Terminal Simulator v1.0</span></div>
+          <div class="term-line"><span class="term-output">Type 'help' for available commands</span></div>
+          <div class="term-line"> </div>
+        </div>
+        <div id="terminal-input-row">
+          <span id="term-prompt-label">~/startercode $</span>
+          <input id="terminal-input" placeholder="" onkeydown="handleTermKey(event)" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+        </div>
+      </div>
+
+      <!-- Files Panel -->
+      <div class="panel" id="files-panel">
+        <div id="files-toolbar">
+          <button onclick="goUpDir()" style="background:transparent;border:none;color:var(--text2);cursor:pointer;padding:4px;display:flex;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+          </button>
+          <div class="path" id="current-path">~/startercode</div>
+          <button onclick="pickDirectory()" style="background:var(--accent);border:none;color:#000;cursor:pointer;padding:6px 10px;border-radius:6px;font-size:11px;font-weight:700;font-family:var(--font);">Open</button>
+        </div>
+        <div id="files-list"></div>
+      </div>
+
+      <!-- Skills Panel -->
+      <div class="panel" id="skills-panel">
+        <div style="padding:12px;border-bottom:1px solid var(--border);background:var(--bg2);">
+          <div style="font-size:15px;font-weight:700;margin-bottom:4px;">Skills</div>
+          <div style="font-size:12px;color:var(--text2);">Pre-installed slash commands — tap to run</div>
+        </div>
+        <div class="skills-grid" id="skills-grid"></div>
+      </div>
+
+      <!-- Agents Panel -->
+      <div class="panel" id="agents-panel">
+        <div style="padding:12px;border-bottom:1px solid var(--border);background:var(--bg2);">
+          <div style="font-size:15px;font-weight:700;margin-bottom:4px;">Agents</div>
+          <div style="font-size:12px;color:var(--text2);">Specialized AI agents — tap to activate</div>
+        </div>
+        <div class="agents-list" id="agents-list"></div>
+      </div>
+
+      <!-- Settings Panel -->
+      <div class="panel" id="settings-panel">
+        <div class="settings-scroll" id="settings-scroll"></div>
+      </div>
+
+      <!-- Download Panel -->
+      <div class="panel" id="download-panel">
+        <div class="download-scroll" id="download-scroll"></div>
+      </div>
+
+      <!-- Status bar -->
+      <div id="status-bar">
+        <div class="status-dot" id="status-dot"></div>
+        <span id="status-text">Ready</span>
+        <span id="status-model">claude-sonnet-4-6</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Nav -->
+  <div id="bottombar">
+    <button class="tab-btn active" onclick="switchTab('chat',this)" id="btn-chat">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Chat
+    </button>
+    <button class="tab-btn" onclick="switchTab('editor',this)" id="btn-editor">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+      Editor
+    </button>
+    <button class="tab-btn" onclick="switchTab('terminal',this)" id="btn-terminal">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+      Terminal
+    </button>
+    <button class="tab-btn" onclick="switchTab('files',this)" id="btn-files">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+      Files
+    </button>
+    <button class="tab-btn" onclick="switchTab('skills',this)" id="btn-skills">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      Skills
+    </button>
+    <button class="tab-btn" onclick="switchTab('agents',this)" id="btn-agents">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0 1 12 0v2"/></svg>
+      Agents
+    </button>
+    <button class="tab-btn" onclick="switchTab('download',this)" id="btn-download">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Download
+    </button>
+    <button class="tab-btn" onclick="switchTab('settings',this)" id="btn-settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+      Config
+    </button>
+  </div>
+</div>
+
+<!-- Overlay -->
+<div id="overlay" onclick="closeOverlays()"></div>
+
+<!-- Command Palette -->
+<div id="cmd-palette" onclick="if(event.target===this)closeCmdPalette()">
+  <div id="cmd-box">
+    <input id="cmd-input" placeholder="Search commands, skills, agents..." oninput="filterCommands(this.value)" onkeydown="handleCmdKey(event)" autocomplete="off">
+    <div id="cmd-results"></div>
+  </div>
+</div>
+
+<!-- API Key Modal -->
+<div class="modal" id="api-modal">
+  <div class="modal-content">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🔑 Configure API Key</div>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:14px;line-height:1.5;">Enter your Anthropic API key to enable real AI responses. Keys are stored in localStorage only.</p>
+    <div style="display:flex;gap:8px;margin-bottom:12px;">
+      <input id="api-key-modal-input" type="password" placeholder="sk-ant-api03-..." style="flex:1;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:8px;font-family:var(--font);font-size:13px;outline:none;">
+      <button onclick="toggleShowKey()" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);padding:10px;border-radius:8px;cursor:pointer;">👁</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
+      <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;">Model</div>
+      <select id="model-select" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;font-family:var(--font);font-size:13px;outline:none;">
+        <option value="claude-sonnet-4-6">claude-sonnet-4-6 (Recommended)</option>
+        <option value="claude-opus-4-7">claude-opus-4-7 (Most Capable)</option>
+        <option value="claude-haiku-4-5-20251001">claude-haiku-4-5 (Fastest)</option>
+        <option value="claude-opus-4-5">claude-opus-4-5</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="saveApiKey()" style="flex:1;padding:12px;background:var(--accent);color:#000;border:none;border-radius:8px;font-family:var(--font);font-size:13px;font-weight:700;cursor:pointer;">Save Key</button>
+      <button onclick="closeModal('api-modal')" style="padding:12px 16px;background:var(--bg3);color:var(--text2);border:1px solid var(--border);border-radius:8px;font-family:var(--font);font-size:13px;cursor:pointer;">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- Context Menu -->
+<div class="ctx-menu" id="ctx-menu"></div>
+
+<script>
+// ==================== STATE ====================
+const state = {
+  apiKey: localStorage.getItem('cc_api_key') || '',
+  model: localStorage.getItem('cc_model') || 'claude-sonnet-4-6',
+  messages: [],
+  sidebarOpen: false,
+  currentTab: 'chat',
+  currentFile: 'Welcome',
+  termHistory: [],
+  termHistoryIdx: -1,
+  settings: JSON.parse(localStorage.getItem('cc_settings') || '{}'),
+  files: {},
+  activeTool: null,
+  streaming: false,
+};
+
+// Defaults
+state.settings = Object.assign({
+  streaming: true,
+  thinking: true,
+  tools: true,
+  autoSave: true,
+  theme: 'dark',
+  fontSize: 13,
+  maxTokens: 8192,
+  temperature: 1,
+  systemPrompt: `You are Claude Code, an AI coding assistant. You have access to tools: Read, Write, Edit, Bash, WebSearch, WebFetch, TodoWrite, Agent. Be concise and helpful. When writing code, use proper formatting. Execute tasks efficiently.`,
+}, state.settings);
+
+// ==================== SKILLS DATA ====================
+const SKILLS = [
+  { icon: '📋', name: 'init', cmd: '/init', desc: 'Initialize CLAUDE.md with codebase docs', color: '#3fb950' },
+  { icon: '🔍', name: 'review', cmd: '/review', desc: 'Review pull request changes', color: '#58a6ff' },
+  { icon: '🔒', name: 'security-review', cmd: '/security-review', desc: 'Security audit of pending changes', color: '#f85149' },
+  { icon: '✨', name: 'simplify', cmd: '/simplify', desc: 'Refactor code for quality & efficiency', color: '#bc8cff' },
+  { icon: '🐛', name: 'fix', cmd: '/fix', desc: 'Find and fix bugs in code', color: '#ffa657' },
+  { icon: '💡', name: 'explain', cmd: '/explain', desc: 'Explain code in plain English', color: '#79c0ff' },
+  { icon: '🧪', name: 'test', cmd: '/test', desc: 'Generate comprehensive test suites', color: '#3fb950' },
+  { icon: '📝', name: 'docs', cmd: '/docs', desc: 'Generate documentation', color: '#8b949e' },
+  { icon: '🚀', name: 'optimize', cmd: '/optimize', desc: 'Optimize code for performance', color: '#ffa657' },
+  { icon: '🔄', name: 'refactor', cmd: '/refactor', desc: 'Refactor with best practices', color: '#bc8cff' },
+  { icon: '🌐', name: 'translate', cmd: '/translate', desc: 'Convert code between languages', color: '#58a6ff' },
+  { icon: '📊', name: 'analyze', cmd: '/analyze', desc: 'Deep code analysis & insights', color: '#79c0ff' },
+  { icon: '⚙️', name: 'update-config', cmd: '/update-config', desc: 'Configure Claude Code settings', color: '#8b949e' },
+  { icon: '🎣', name: 'session-start', cmd: '/session-start', desc: 'Set up startup hooks', color: '#3fb950' },
+  { icon: '🔑', name: 'api-setup', cmd: '/api-setup', desc: 'Configure Claude API integration', color: '#f59e0b' },
+];
+
+// ==================== AGENTS DATA ====================
+const AGENTS = [
+  {
+    icon: '🔭', name: 'Explore Agent', type: 'explore',
+    color: '#58a6ff',
+    desc: 'Fast read-only search agent. Finds files by pattern, greps for symbols, locates definitions. Best for: "where is X defined", "which files use Y".',
+    tools: ['Bash', 'Read', 'WebFetch', 'WebSearch', 'Grep'],
+    prompt: 'Act as the Explore agent. I will give you search tasks. Search the codebase efficiently and report findings concisely.',
+  },
+  {
+    icon: '🗺️', name: 'Plan Agent', type: 'plan',
+    color: '#3fb950',
+    desc: 'Software architect agent for designing implementation plans. Returns step-by-step plans, identifies critical files, considers trade-offs.',
+    tools: ['Read', 'Bash', 'WebFetch'],
+    prompt: 'Act as the Plan agent. Design detailed implementation plans. Identify files to change, steps to follow, and trade-offs to consider.',
+  },
+  {
+    icon: '💻', name: 'Code Agent', type: 'code',
+    color: '#bc8cff',
+    desc: 'Full-stack coding agent. Implements features, fixes bugs, writes clean code following best practices. Has access to all file system tools.',
+    tools: ['Read', 'Write', 'Edit', 'Bash', 'WebSearch'],
+    prompt: 'Act as the Code agent. Implement the requested feature or fix. Write clean, efficient code. Make minimal necessary changes.',
+  },
+  {
+    icon: '🧪', name: 'Test Agent', type: 'test',
+    color: '#ffa657',
+    desc: 'Testing specialist. Generates comprehensive test suites, identifies edge cases, validates behavior. Writes unit, integration, and e2e tests.',
+    tools: ['Read', 'Write', 'Bash'],
+    prompt: 'Act as the Test agent. Write comprehensive tests for the code. Cover happy paths, edge cases, and error conditions.',
+  },
+  {
+    icon: '🔒', name: 'Security Agent', type: 'security',
+    color: '#f85149',
+    desc: 'Security review specialist. Audits code for OWASP vulnerabilities, injection attacks, auth issues, and data exposure risks.',
+    tools: ['Read', 'Bash', 'WebSearch'],
+    prompt: 'Act as the Security agent. Audit the code for security vulnerabilities. Check OWASP top 10, injection, auth, and data exposure.',
+  },
+  {
+    icon: '📖', name: 'Docs Agent', type: 'docs',
+    color: '#79c0ff',
+    desc: 'Documentation specialist. Generates README files, API docs, inline comments, and developer guides from code.',
+    tools: ['Read', 'Write'],
+    prompt: 'Act as the Docs agent. Generate clear, comprehensive documentation. Include examples and explain the why, not just the what.',
+  },
+  {
+    icon: '🔧', name: 'Debug Agent', type: 'debug',
+    color: '#f59e0b',
+    desc: 'Debugging specialist. Traces errors, analyzes stack traces, identifies root causes, and proposes targeted fixes.',
+    tools: ['Read', 'Bash', 'WebSearch'],
+    prompt: 'Act as the Debug agent. Trace the error to its root cause. Analyze systematically. Propose minimal targeted fixes.',
+  },
+  {
+    icon: '🌐', name: 'Claude Code Guide', type: 'guide',
+    color: '#8b949e',
+    desc: 'Expert on Claude Code CLI, Agent SDK, and API. Answers questions about features, hooks, slash commands, MCP servers, and IDE integrations.',
+    tools: ['Bash', 'Read', 'WebFetch', 'WebSearch'],
+    prompt: 'Act as the Claude Code Guide agent. Answer questions about Claude Code CLI features, the Agent SDK, and the Claude API. Be precise and practical.',
+  },
+];
+
+// ==================== COMMANDS ====================
+const COMMANDS = [
+  ...SKILLS.map(s => ({ icon: s.icon, name: s.cmd, hint: s.desc, type: 'skill', action: () => runSkill(s) })),
+  { icon: '🤖', name: '/agent explore', hint: 'Spawn Explore agent', type: 'agent', action: () => activateAgent(AGENTS[0]) },
+  { icon: '🤖', name: '/agent plan', hint: 'Spawn Plan agent', type: 'agent', action: () => activateAgent(AGENTS[1]) },
+  { icon: '🤖', name: '/agent code', hint: 'Spawn Code agent', type: 'agent', action: () => activateAgent(AGENTS[2]) },
+  { icon: '🤖', name: '/agent test', hint: 'Spawn Test agent', type: 'agent', action: () => activateAgent(AGENTS[3]) },
+  { icon: '🤖', name: '/agent security', hint: 'Spawn Security agent', type: 'agent', action: () => activateAgent(AGENTS[4]) },
+  { icon: '🧹', name: '/clear', hint: 'Clear chat history', type: 'util', action: () => clearChat() },
+  { icon: '📋', name: '/help', hint: 'Show help', type: 'util', action: () => showHelp() },
+  { icon: '⚙️', name: '/config', hint: 'Open settings', type: 'util', action: () => switchTab('settings', document.getElementById('btn-settings')) },
+  { icon: '⬇️', name: '/download', hint: 'Download this app', type: 'util', action: () => switchTab('download', document.getElementById('btn-download')) },
+  { icon: '🔑', name: '/apikey', hint: 'Set API key', type: 'util', action: () => showApiKeyModal() },
+  { icon: '📁', name: '/files', hint: 'Open file browser', type: 'util', action: () => switchTab('files', document.getElementById('btn-files')) },
+  { icon: '💻', name: '/terminal', hint: 'Open terminal', type: 'util', action: () => switchTab('terminal', document.getElementById('btn-terminal')) },
+];
+
+// ==================== TERMINAL COMMANDS ====================
+const TERM_CMDS = {
+  help: () => `Available commands:
+  ls              List directory contents
+  pwd             Print working directory
+  git status      Show git status
+  git log         Show recent commits
+  git branch      List branches
+  node -v         Show Node.js version
+  npm -v          Show npm version
+  cat <file>      Show file contents
+  echo <text>     Print text
+  clear           Clear terminal
+  whoami          Current user
+  date            Current date/time
+  history         Command history
+  claude          Claude Code CLI help`,
+  ls: () => `CLAUDE.md\n.claude/\n  settings.json\n  keybindings.json\npackage.json\nnode_modules/\nsrc/\n  index.js\n  utils.js`,
+  pwd: () => '/home/user/startercode',
+  whoami: () => 'user',
+  date: () => new Date().toString(),
+  clear: () => { clearTerminal(); return null; },
+  history: () => state.termHistory.join('\n'),
+  node: (args) => args.includes('-v') ? 'v22.14.0' : 'Usage: node [file]',
+  npm: (args) => args.includes('-v') ? '10.9.2' : 'Usage: npm <command>',
+  git: (args) => {
+    if (args.includes('status')) return 'On branch claude/mobile-claude-clone-app-h2y3n\nnothing to commit, working tree clean';
+    if (args.includes('log')) return 'commit a3f2c1b (HEAD -> main)\nAuthor: Developer\nDate: ' + new Date().toDateString() + '\n\n    Initial commit';
+    if (args.includes('branch')) return '* claude/mobile-claude-clone-app-h2y3n\n  main';
+    if (args.includes('diff')) return '(no changes)';
+    return 'git: try git status, git log, git branch';
+  },
+  echo: (args) => args,
+  cat: (args) => {
+    if (args.includes('CLAUDE.md')) return '# Claude Code Project\n\nThis project uses Claude Code for AI-assisted development.\n\n## Setup\n\nRun `npm install` to get started.';
+    if (args.includes('settings.json')) return JSON.stringify({ model: state.model, tools: true }, null, 2);
+    if (args.includes('package.json')) return '{\n  "name": "startercode",\n  "version": "1.0.0",\n  "description": "Claude Code starter"\n}';
+    return `cat: ${args}: No such file or directory`;
+  },
+  claude: () => `Claude Code CLI v1.0.0
+
+Usage: claude [options] [prompt]
+
+Options:
+  --help        Show help
+  --version     Show version
+  --model       Set model
+  --api-key     Set API key
+
+Slash Commands:
+  /init         Initialize project
+  /review       Review code
+  /fix          Fix bugs
+  /explain      Explain code
+  /test         Generate tests`,
+};
+
+// ==================== INIT ====================
+function init() {
+  renderSkills();
+  renderAgents();
+  renderSettings();
+  renderDownload();
+  renderFiles();
+  checkApiKey();
+  loadHistory();
+  setupSwipe();
+}
+
+function checkApiKey() {
+  if (!state.apiKey) {
+    document.getElementById('api-key-banner').style.display = 'block';
+    setStatus('No API key', 'red');
+  } else {
+    document.getElementById('api-key-banner').style.display = 'none';
+    setStatus('Ready', 'green');
+  }
+}
+
+// ==================== LAYOUT ====================
+function switchTab(name, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  const panel = document.getElementById(name + '-panel');
+  if (panel) panel.classList.add('active');
+  if (btn) btn.classList.add('active');
+  state.currentTab = name;
+  closeSidebar();
+}
+
+function toggleSidebar() {
+  state.sidebarOpen = !state.sidebarOpen;
+  const sb = document.getElementById('sidebar');
+  const ov = document.getElementById('overlay');
+  if (state.sidebarOpen) {
+    sb.classList.remove('hidden');
+    ov.classList.add('show');
+  } else {
+    sb.classList.add('hidden');
+    ov.classList.remove('show');
+  }
+}
+
+function closeSidebar() {
+  state.sidebarOpen = false;
+  document.getElementById('sidebar').classList.add('hidden');
+  document.getElementById('overlay').classList.remove('show');
+}
+
+function closeOverlays() {
+  closeSidebar();
+  closeCmdPalette();
+}
+
+function switchSidebarTab(name, el) {
+  document.querySelectorAll('.sidebar-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('#sidebar-content > div').forEach(d => d.style.display = 'none');
+  const tab = document.getElementById('tab-' + name);
+  if (tab) tab.style.display = 'block';
+}
+
+// ==================== CHAT ====================
+async function sendMessage() {
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if (!text || state.streaming) return;
+
+  input.value = '';
+  autoResize(input);
+
+  // Handle slash commands
+  if (text.startsWith('/')) {
+    handleCommand(text);
+    return;
+  }
+
+  addMessage('user', text);
+  saveHistory();
+
+  if (!state.apiKey) {
+    addMessage('assistant', '⚠️ Please set your API key first. Tap the key icon in the top bar or type /apikey');
+    return;
+  }
+
+  await callClaude(text);
+}
+
+function handleCommand(text) {
+  const cmd = text.split(' ')[0].toLowerCase();
+  const found = COMMANDS.find(c => c.name === cmd || c.name === text.split(' ').slice(0,2).join(' '));
+  if (found) {
+    found.action();
+    return;
+  }
+  // Treat as a skill prompt
+  addMessage('user', text);
+  if (!state.apiKey) {
+    addMessage('assistant', `⚠️ No API key set. Simulating ${cmd}...\n\nThis would run the **${cmd}** skill against your codebase. Set your API key to enable real execution.`);
+    return;
+  }
+  callClaude(text);
+}
+
+async function callClaude(userText) {
+  state.streaming = true;
+  document.getElementById('send-btn').disabled = true;
+  setStatus('Thinking...', 'yellow');
+
+  const thinkingId = 'thinking-' + Date.now();
+  addRawMessage(`<div class="msg assistant" id="${thinkingId}"><div class="msg-avatar">C</div><div class="msg-bubble"><div class="thinking">Processing your request</div></div></div>`);
+
+  const systemPrompt = state.settings.systemPrompt;
+  const msgs = state.messages.slice(-20).map(m => ({ role: m.role, content: m.content }));
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': state.apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: state.model,
+        max_tokens: state.settings.maxTokens,
+        system: systemPrompt,
+        messages: msgs,
+        stream: true,
+      }),
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.error?.message || `API error ${resp.status}`);
+    }
+
+    // Stream response
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let fullText = '';
+    let buffer = '';
+
+    const thinkEl = document.getElementById(thinkingId);
+    if (thinkEl) thinkEl.remove();
+    const msgId = 'msg-' + Date.now();
+    addRawMessage(`<div class="msg assistant" id="${msgId}"><div class="msg-avatar">C</div><div class="msg-bubble typing-cursor" id="bubble-${msgId}"></div></div>`);
+    const bubble = document.getElementById('bubble-' + msgId);
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6).trim();
+          if (data === '[DONE]') continue;
+          try {
+            const json = JSON.parse(data);
+            if (json.type === 'content_block_delta' && json.delta?.text) {
+              fullText += json.delta.text;
+              bubble.innerHTML = formatMessage(fullText);
+              scrollChat();
+            }
+          } catch {}
+        }
+      }
+    }
+
+    bubble.classList.remove('typing-cursor');
+    state.messages.push({ role: 'assistant', content: fullText });
+    saveHistory();
+    setStatus('Ready', 'green');
+
+  } catch (err) {
+    const thinkEl = document.getElementById(thinkingId);
+    if (thinkEl) thinkEl.remove();
+    addMessage('assistant', `❌ Error: ${err.message}`);
+    setStatus('Error', 'red');
+  }
+
+  state.streaming = false;
+  document.getElementById('send-btn').disabled = false;
+}
+
+function addMessage(role, content) {
+  if (role !== 'system') {
+    state.messages.push({ role, content });
+  }
+  const msgs = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+
+  if (role === 'system') {
+    div.innerHTML = `<div class="msg-bubble">${content}</div>`;
+  } else if (role === 'user') {
+    div.innerHTML = `<div class="msg-avatar">U</div><div class="msg-bubble">${escHtml(content)}</div>`;
+  } else {
+    div.innerHTML = `<div class="msg-avatar">C</div><div class="msg-bubble">${formatMessage(content)}</div>`;
+  }
+
+  msgs.appendChild(div);
+  scrollChat();
+}
+
+function addRawMessage(html) {
+  const msgs = document.getElementById('chat-messages');
+  msgs.insertAdjacentHTML('beforeend', html);
+  scrollChat();
+}
+
+function formatMessage(text) {
+  // Code blocks
+  text = text.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) => {
+    return `<pre><code class="lang-${lang}">${escHtml(code.trim())}</code></pre>`;
+  });
+  // Inline code
+  text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+  // Bold
+  text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  // Italic
+  text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
+  // Links
+  text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" style="color:var(--blue)" target="_blank">$1</a>');
+  // Newlines
+  text = text.replace(/\n/g, '<br>');
+  return text;
+}
+
+function escHtml(t) {
+  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function scrollChat() {
+  const msgs = document.getElementById('chat-messages');
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function clearChat() {
+  state.messages = [];
+  const msgs = document.getElementById('chat-messages');
+  msgs.innerHTML = '';
+  addMessage('system', 'Chat cleared');
+  saveHistory();
+}
+
+function saveHistory() {
+  const histData = state.messages.slice(-50);
+  localStorage.setItem('cc_messages', JSON.stringify(histData));
+  renderHistoryList();
+}
+
+function loadHistory() {
+  const saved = localStorage.getItem('cc_messages');
+  if (saved) {
+    try {
+      const msgs = JSON.parse(saved);
+      msgs.forEach(m => {
+        if (m.role === 'user' || m.role === 'assistant') {
+          const msgs2 = document.getElementById('chat-messages');
+          const div = document.createElement('div');
+          div.className = `msg ${m.role}`;
+          if (m.role === 'user') {
+            div.innerHTML = `<div class="msg-avatar">U</div><div class="msg-bubble">${escHtml(m.content)}</div>`;
+          } else {
+            div.innerHTML = `<div class="msg-avatar">C</div><div class="msg-bubble">${formatMessage(m.content)}</div>`;
+          }
+          msgs2.appendChild(div);
+        }
+      });
+      state.messages = msgs;
+      scrollChat();
+    } catch {}
+  }
+}
+
+function renderHistoryList() {
+  const list = document.getElementById('history-list');
+  if (!list) return;
+  const userMsgs = state.messages.filter(m => m.role === 'user').slice(-8);
+  list.innerHTML = userMsgs.map(m => `
+    <div class="sidebar-item" onclick="closeSidebar()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      ${escHtml(m.content.slice(0, 30))}${m.content.length > 30 ? '...' : ''}
+    </div>
+  `).join('');
+}
+
+function showHelp() {
+  addMessage('assistant', `## Claude Code Mobile — Help
+
+**Chat**
+- Type your message and hit send
+- Use / to trigger skill commands
+- Use @file to reference files
+
+**Slash Commands**
+${SKILLS.map(s => `- \`${s.cmd}\` — ${s.desc}`).join('\n')}
+- \`/clear\` — Clear conversation
+- \`/agent <type>\` — Spawn an agent
+- \`/apikey\` — Set your API key
+
+**Agents**
+Go to the Agents tab to spawn specialized AI agents for code, testing, security review, documentation, and more.
+
+**Tips**
+- Tap the ⬇️ Download tab to save this app offline
+- Long-press any message to copy
+- Pinch to zoom in the editor`);
+}
+
+// ==================== INPUT ====================
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+function handleInputKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+}
+
+function handleSlash(value) {
+  if (value === '/') showCmdPalette();
+}
+
+function insertSlashCmd(cmd) {
+  const input = document.getElementById('chat-input');
+  input.value = cmd + ' ';
+  input.focus();
+  autoResize(input);
+}
+
+function attachFile() {
+  const inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = '.txt,.js,.ts,.py,.html,.css,.json,.md,.jsx,.tsx,.rs,.go,.java,.cpp,.c,.h,.yaml,.yml,.toml,.env';
+  inp.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const text = await file.text();
+    const input = document.getElementById('chat-input');
+    input.value += `\n\nFile: ${file.name}\n\`\`\`\n${text.slice(0, 5000)}\n\`\`\``;
+    autoResize(input);
+    input.focus();
+  };
+  inp.click();
+}
+
+// ==================== COMMAND PALETTE ====================
+function showCmdPalette() {
+  document.getElementById('cmd-palette').classList.add('show');
+  document.getElementById('cmd-input').value = '';
+  filterCommands('');
+  setTimeout(() => document.getElementById('cmd-input').focus(), 100);
+}
+
+function closeCmdPalette() {
+  document.getElementById('cmd-palette').classList.remove('show');
+}
+
+function filterCommands(q) {
+  const filtered = q ? COMMANDS.filter(c => c.name.includes(q) || c.hint.toLowerCase().includes(q.toLowerCase())) : COMMANDS;
+  const results = document.getElementById('cmd-results');
+  results.innerHTML = filtered.slice(0, 20).map((c, i) => `
+    <div class="cmd-item" onclick="runCmd(${COMMANDS.indexOf(c)})">
+      <div class="cmd-icon">${c.icon}</div>
+      <div class="cmd-text">
+        <div class="cmd-name">${c.name}</div>
+        <div class="cmd-hint">${c.hint}</div>
+      </div>
+      <span class="cmd-key">${c.type}</span>
+    </div>
+  `).join('');
+}
+
+function runCmd(idx) {
+  closeCmdPalette();
+  COMMANDS[idx].action();
+}
+
+function handleCmdKey(e) {
+  if (e.key === 'Escape') closeCmdPalette();
+  if (e.key === 'Enter') {
+    const first = document.querySelector('.cmd-item');
+    if (first) first.click();
+  }
+}
+
+// ==================== SKILLS ====================
+function renderSkills() {
+  const grid = document.getElementById('skills-grid');
+  grid.innerHTML = SKILLS.map(s => `
+    <div class="skill-card" onclick="runSkill(${JSON.stringify(s).replace(/"/g,'&quot;')})" style="border-top:3px solid ${s.color}">
+      <div class="skill-icon">${s.icon}</div>
+      <div class="skill-name">${s.name}</div>
+      <div class="skill-desc">${s.desc}</div>
+      <div class="skill-cmd">${s.cmd}</div>
+    </div>
+  `).join('');
+}
+
+function runSkill(skill) {
+  if (typeof skill === 'string') skill = JSON.parse(skill);
+  switchTab('chat', document.getElementById('btn-chat'));
+  const input = document.getElementById('chat-input');
+  input.value = skill.cmd + ' ';
+  autoResize(input);
+  input.focus();
+  addMessage('system', `Running skill: ${skill.cmd}`);
+}
+
+// ==================== AGENTS ====================
+function renderAgents() {
+  const list = document.getElementById('agents-list');
+  list.innerHTML = AGENTS.map((a, i) => `
+    <div class="agent-card" style="border-top:3px solid ${a.color}">
+      <div class="agent-header">
+        <div class="agent-icon" style="background:${a.color}20">${a.icon}</div>
+        <div>
+          <div class="agent-name">${a.name}</div>
+          <span class="agent-type">${a.type}</span>
+        </div>
+      </div>
+      <div class="agent-desc">${a.desc}</div>
+      <div class="agent-tools">${a.tools.map(t => `<span class="tool-tag">${t}</span>`).join('')}</div>
+      <button class="agent-btn" onclick="activateAgent(AGENTS[${i}])">→ Activate Agent</button>
+    </div>
+  `).join('');
+}
+
+function activateAgent(agent) {
+  switchTab('chat', document.getElementById('btn-chat'));
+  addMessage('system', `Agent activated: ${agent.name}`);
+  const input = document.getElementById('chat-input');
+  input.value = `/agent ${agent.type} `;
+  autoResize(input);
+  input.focus();
+
+  // Add agent context to next message
+  state._pendingAgentPrompt = agent.prompt;
+  addMessage('assistant', `🤖 **${agent.name}** activated!\n\nTools: ${agent.tools.join(', ')}\n\n${agent.desc}\n\nHow can I help you?`);
+}
+
+// ==================== TERMINAL ====================
+function handleTermKey(e) {
+  const input = document.getElementById('terminal-input');
+  if (e.key === 'Enter') {
+    const cmd = input.value.trim();
+    if (!cmd) return;
+    state.termHistory.unshift(cmd);
+    state.termHistoryIdx = -1;
+    input.value = '';
+    runTermCmd(cmd);
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (state.termHistoryIdx < state.termHistory.length - 1) {
+      state.termHistoryIdx++;
+      input.value = state.termHistory[state.termHistoryIdx];
+    }
+  } else if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    if (state.termHistoryIdx > 0) {
+      state.termHistoryIdx--;
+      input.value = state.termHistory[state.termHistoryIdx];
+    } else {
+      state.termHistoryIdx = -1;
+      input.value = '';
+    }
+  } else if (e.key === 'l' && e.ctrlKey) {
+    e.preventDefault();
+    clearTerminal();
+  }
+}
+
+function runTermCmd(cmd) {
+  const out = document.getElementById('terminal-output');
+  const parts = cmd.trim().split(/\s+/);
+  const bin = parts[0].toLowerCase();
+  const args = parts.slice(1).join(' ');
+
+  // Show command
+  out.innerHTML += `<div class="term-line"><span class="term-prompt">~/startercode $ </span><span class="term-cmd">${escHtml(cmd)}</span></div>`;
+
+  let result = null;
+  if (bin === 'git') {
+    result = TERM_CMDS.git(args);
+  } else if (TERM_CMDS[bin]) {
+    result = TERM_CMDS[bin](args);
+  } else {
+    result = `bash: ${bin}: command not found\nTry 'help' to see available commands`;
+  }
+
+  if (result !== null) {
+    out.innerHTML += `<div class="term-line term-output">${escHtml(result)}</div>`;
+  }
+  out.innerHTML += `<div class="term-line"> </div>`;
+  out.scrollTop = out.scrollHeight;
+}
+
+function clearTerminal() {
+  document.getElementById('terminal-output').innerHTML = '';
+}
+
+// ==================== FILES ====================
+let currentPath = '/home/user/startercode';
+let fsHandle = null;
+
+const virtualFS = {
+  '/home/user/startercode': {
+    type: 'dir',
+    children: {
+      'CLAUDE.md': { type: 'file', size: '2.1 KB', icon: '📋', lang: 'md' },
+      '.claude': { type: 'dir', icon: '⚙️', children: {
+        'settings.json': { type: 'file', size: '0.8 KB', icon: '📄', lang: 'json' },
+        'keybindings.json': { type: 'file', size: '0.4 KB', icon: '📄', lang: 'json' },
+      }},
+      'package.json': { type: 'file', size: '0.6 KB', icon: '📦', lang: 'json' },
+      'src': { type: 'dir', icon: '📁', children: {
+        'index.js': { type: 'file', size: '3.2 KB', icon: '🟨', lang: 'js' },
+        'utils.js': { type: 'file', size: '1.1 KB', icon: '🟨', lang: 'js' },
+      }},
+      'node_modules': { type: 'dir', icon: '📦', children: {} },
+    }
+  }
+};
+
+function renderFiles() {
+  const list = document.getElementById('files-list');
+  const pathDisplay = document.getElementById('current-path');
+
+  let node = virtualFS['/home/user/startercode'];
+  const rel = currentPath.replace('/home/user/startercode', '').split('/').filter(Boolean);
+  for (const part of rel) {
+    if (node && node.children && node.children[part]) node = node.children[part];
+  }
+
+  pathDisplay.textContent = currentPath.replace('/home/user', '~');
+
+  if (!node || !node.children) {
+    list.innerHTML = '<div style="padding:20px;color:var(--text3);text-align:center;">Empty directory</div>';
+    return;
+  }
+
+  const entries = Object.entries(node.children);
+  list.innerHTML = entries.map(([name, item]) => `
+    <div class="file-item" onclick="handleFileClick('${name}','${item.type}')" oncontextmenu="showCtxMenu(event,'${name}')">
+      <div class="file-icon" style="background:var(--bg3)">${item.icon || (item.type === 'dir' ? '📁' : '📄')}</div>
+      <div class="file-name">${name}</div>
+      <div class="file-meta">${item.type === 'dir' ? 'folder' : (item.size || '')}</div>
+    </div>
+  `).join('');
+}
+
+function handleFileClick(name, type) {
+  if (type === 'dir') {
+    currentPath += '/' + name;
+    renderFiles();
+  } else {
+    openFile(name, getExt(name));
+  }
+}
+
+function goUpDir() {
+  const base = '/home/user/startercode';
+  if (currentPath !== base) {
+    currentPath = currentPath.split('/').slice(0, -1).join('/') || base;
+    renderFiles();
+  }
+}
+
+function getExt(name) {
+  return name.split('.').pop() || 'txt';
+}
+
+function openFile(name, lang) {
+  switchTab('editor', document.getElementById('btn-editor'));
+  state.currentFile = name;
+  const editor = document.getElementById('code-editor');
+
+  const defaults = {
+    'CLAUDE.md': `# Claude Code Project
+
+This project uses Claude Code for AI-assisted development.
+
+## Setup
+
+1. Install Claude Code: \`npm install -g @anthropic-ai/claude-code\`
+2. Set API key: \`claude config set api_key sk-ant-...\`
+3. Run Claude: \`claude\`
+
+## Skills
+
+Pre-installed skills in \`.claude/\` directory.
+
+## Commands
+
+- \`/init\` — Initialize project docs
+- \`/review\` — Review code changes
+- \`/fix\` — Fix bugs automatically
+`,
+    'settings.json': `{
+  "model": "${state.model}",
+  "maxTokens": ${state.settings.maxTokens},
+  "tools": ${state.settings.tools},
+  "streaming": ${state.settings.streaming},
+  "theme": "${state.settings.theme}"
+}`,
+    'package.json': `{
+  "name": "startercode",
+  "version": "1.0.0",
+  "description": "Claude Code Mobile App",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "jest",
+    "lint": "eslint src/"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0"
+  }
+}`,
+    'index.js': `import Anthropic from '@anthropic-ai/sdk';
+
+const client = new Anthropic();
+
+async function main() {
+  const message = await client.messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 1024,
+    messages: [{ role: 'user', content: 'Hello, Claude!' }],
+  });
+
+  console.log(message.content[0].text);
+}
+
+main();
+`,
+  };
+
+  editor.value = defaults[name] || `// ${name}\n// Open and edit this file\n`;
+  document.getElementById('tab-welcome').textContent = name;
+}
+
+function newFile() {
+  const name = prompt('File name:');
+  if (name) {
+    const editor = document.getElementById('code-editor');
+    editor.value = '';
+    state.currentFile = name;
+    document.getElementById('tab-welcome').textContent = name;
+    editor.focus();
+  }
+}
+
+function saveFile() {
+  const content = document.getElementById('code-editor').value;
+  const blob = new Blob([content], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = state.currentFile;
+  a.click();
+  toast('File saved!');
+}
+
+async function pickDirectory() {
+  if ('showDirectoryPicker' in window) {
+    try {
+      fsHandle = await window.showDirectoryPicker();
+      currentPath = fsHandle.name;
+      document.getElementById('current-path').textContent = fsHandle.name;
+      toast('Folder opened: ' + fsHandle.name);
+    } catch {}
+  } else {
+    const inp = document.createElement('input');
+    inp.type = 'file';
+    inp.multiple = true;
+    inp.onchange = (e) => {
+      const files = Array.from(e.target.files);
+      toast(`${files.length} files selected`);
+    };
+    inp.click();
+  }
+}
+
+// ==================== SETTINGS ====================
+function renderSettings() {
+  const scroll = document.getElementById('settings-scroll');
+  scroll.innerHTML = `
+    <div class="settings-group">
+      <div class="settings-group-title">API</div>
+      <div class="settings-item">
+        <div class="settings-label">
+          <div class="label-title">API Key</div>
+          <div class="label-desc">${state.apiKey ? '••••••••' + state.apiKey.slice(-4) : 'Not set'}</div>
+        </div>
+        <button onclick="showApiKeyModal()" style="padding:6px 12px;background:var(--accent);border:none;color:#000;border-radius:6px;font-family:var(--font);font-size:12px;cursor:pointer;">Set Key</button>
+      </div>
+      <div class="settings-item">
+        <div class="settings-label">
+          <div class="label-title">Model</div>
+          <div class="label-desc">Active AI model</div>
+        </div>
+        <select class="settings-select" onchange="updateSetting('model',this.value)">
+          <option value="claude-sonnet-4-6" ${state.model==='claude-sonnet-4-6'?'selected':''}>Sonnet 4.6</option>
+          <option value="claude-opus-4-7" ${state.model==='claude-opus-4-7'?'selected':''}>Opus 4.7</option>
+          <option value="claude-haiku-4-5-20251001" ${state.model==='claude-haiku-4-5-20251001'?'selected':''}>Haiku 4.5</option>
+        </select>
+      </div>
+      <div class="settings-item">
+        <div class="settings-label">
+          <div class="label-title">Max Tokens</div>
+          <div class="label-desc">Response length limit</div>
+        </div>
+        <input class="settings-input" type="number" value="${state.settings.maxTokens}" onchange="updateSetting('maxTokens',+this.value)">
+      </div>
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-group-title">Behavior</div>
+      <div class="settings-item">
+        <div class="settings-label">
+          <div class="label-title">Streaming</div>
+          <div class="label-desc">Show responses as they stream</div>
+        </div>
+        <div class="toggle ${state.settings.streaming?'on':''}" onclick="toggleSetting(this,'streaming')"></div>
+      </div>
+      <div class="settings-item">
+        <div class="settings-label">
+          <div class="label-title">Tool Use</div>
+          <div class="label-desc">Enable Claude to use tools</div>
+        </div>
+        <div class="toggle ${state.settings.tools?'on':''}" onclick="toggleSetting(this,'tools')"></div>
+      </div>
+      <div class="settings-item">
+        <div class="settings-label">
+          <div class="label-title">Auto-save Chat</div>
+          <div class="label-desc">Persist conversation history</div>
+        </div>
+        <div class="toggle ${state.settings.autoSave?'on':''}" onclick="toggleSetting(this,'autoSave')"></div>
+      </div>
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-group-title">System Prompt</div>
+      <div class="settings-item" style="flex-direction:column;align-items:stretch;gap:8px;">
+        <textarea style="background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:6px;font-family:var(--font);font-size:12px;min-height:100px;resize:vertical;outline:none;" onchange="updateSetting('systemPrompt',this.value)">${state.settings.systemPrompt}</textarea>
+      </div>
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-group-title">About</div>
+      <div class="settings-item">
+        <div class="settings-label">
+          <div class="label-title">Claude Code Mobile</div>
+          <div class="label-desc">v1.0.0 — Single-file PWA</div>
+        </div>
+        <span style="font-size:11px;color:var(--text3);">2026</span>
+      </div>
+      <div class="settings-item">
+        <div class="settings-label">
+          <div class="label-title">Clear All Data</div>
+          <div class="label-desc">Reset app to defaults</div>
+        </div>
+        <button onclick="clearAllData()" style="padding:6px 12px;background:rgba(248,81,73,0.15);border:1px solid var(--red);color:var(--red);border-radius:6px;font-family:var(--font);font-size:12px;cursor:pointer;">Clear</button>
+      </div>
+    </div>
+  `;
+}
+
+function updateSetting(key, val) {
+  if (key === 'model') {
+    state.model = val;
+    localStorage.setItem('cc_model', val);
+    document.getElementById('status-model').textContent = val;
+  } else {
+    state.settings[key] = val;
+  }
+  localStorage.setItem('cc_settings', JSON.stringify(state.settings));
+}
+
+function toggleSetting(el, key) {
+  el.classList.toggle('on');
+  updateSetting(key, el.classList.contains('on'));
+}
+
+function clearAllData() {
+  if (confirm('Clear all data? This cannot be undone.')) {
+    localStorage.clear();
+    location.reload();
+  }
+}
+
+// ==================== API KEY ====================
+function showApiKeyModal() {
+  const modal = document.getElementById('api-modal');
+  const inp = document.getElementById('api-key-modal-input');
+  const modelSel = document.getElementById('model-select');
+  inp.value = state.apiKey;
+  modelSel.value = state.model;
+  modal.classList.add('show');
+  setTimeout(() => inp.focus(), 100);
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('show');
+}
+
+function saveApiKey() {
+  const key = document.getElementById('api-key-modal-input').value.trim();
+  const model = document.getElementById('model-select').value;
+  if (key) {
+    state.apiKey = key;
+    state.model = model;
+    localStorage.setItem('cc_api_key', key);
+    localStorage.setItem('cc_model', model);
+    document.getElementById('status-model').textContent = model;
+    toast('API key saved!');
+    checkApiKey();
+    renderSettings();
+  }
+  closeModal('api-modal');
+}
+
+function toggleShowKey() {
+  const inp = document.getElementById('api-key-modal-input');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+// ==================== DOWNLOAD ====================
+function renderDownload() {
+  const scroll = document.getElementById('download-scroll');
+  scroll.innerHTML = `
+    <div class="download-hero">
+      <h2>⬇️ Download Claude Code Mobile</h2>
+      <p>Get the full offline experience. This single HTML file contains everything — all skills, agents, tools, and the UI — no internet required (except for API calls).</p>
+    </div>
+
+    <div class="download-card">
+      <h3>📱 Claude Code Mobile App <span class="size-badge">~120 KB</span></h3>
+      <p>The complete mobile web app as a single self-contained HTML file. Open in any browser, save to home screen as a PWA.</p>
+      <div class="feature-list" style="margin-bottom:14px;">
+        <div class="feature-item">8 pre-installed AI agents (Explore, Plan, Code, Test, Security, Docs, Debug, Guide)</div>
+        <div class="feature-item">15 pre-installed skills (/init, /review, /security-review, /fix, /test...)</div>
+        <div class="feature-item">Built-in code editor with syntax highlighting</div>
+        <div class="feature-item">Terminal simulator with git, npm, node commands</div>
+        <div class="feature-item">File browser with File System Access API</div>
+        <div class="feature-item">Real Claude API integration with streaming</div>
+        <div class="feature-item">Command palette with / shortcut</div>
+        <div class="feature-item">Offline-capable (add to home screen)</div>
+      </div>
+      <button class="download-btn" onclick="downloadApp()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download claude-code-mobile.html
+      </button>
+    </div>
+
+    <div class="download-card">
+      <h3>🤖 Agents Bundle <span class="size-badge">JSON</span></h3>
+      <p>All 8 pre-configured agents as a JSON bundle. Import into your Claude Code CLI or SDK projects.</p>
+      <button class="download-btn secondary" onclick="downloadAgents()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download agents.json
+      </button>
+    </div>
+
+    <div class="download-card">
+      <h3>✨ Skills Bundle <span class="size-badge">JSON</span></h3>
+      <p>All 15 slash command skills as a JSON bundle. Drop into your \`.claude/\` directory.</p>
+      <button class="download-btn secondary" onclick="downloadSkills()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download skills.json
+      </button>
+    </div>
+
+    <div class="download-card">
+      <h3>📦 Complete Bundle <span class="size-badge">ZIP-in-HTML</span></h3>
+      <p>Everything in one: app + agents + skills + sample CLAUDE.md + settings.json. Unzip to bootstrap a new project.</p>
+      <button class="download-btn" onclick="downloadBundle()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download claude-code-bundle.json
+      </button>
+    </div>
+
+    <div style="padding:12px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;font-size:12px;color:var(--text2);line-height:1.6;">
+      <strong style="color:var(--text);">📲 Add to Home Screen</strong><br>
+      iOS: Share → Add to Home Screen<br>
+      Android: Menu → Add to Home Screen<br>
+      Desktop: Browser → Install App
+    </div>
+  `;
+}
+
+function downloadApp() {
+  const content = document.documentElement.outerHTML;
+  const blob = new Blob([content], { type: 'text/html' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'claude-code-mobile.html';
+  a.click();
+  toast('Downloading app...');
+}
+
+function downloadAgents() {
+  const data = JSON.stringify({ version: '1.0.0', agents: AGENTS }, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'agents.json';
+  a.click();
+  toast('Downloading agents.json...');
+}
+
+function downloadSkills() {
+  const data = JSON.stringify({ version: '1.0.0', skills: SKILLS }, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'skills.json';
+  a.click();
+  toast('Downloading skills.json...');
+}
+
+function downloadBundle() {
+  const bundle = {
+    version: '1.0.0',
+    name: 'Claude Code Mobile Bundle',
+    created: new Date().toISOString(),
+    agents: AGENTS,
+    skills: SKILLS,
+    settings: {
+      model: state.model,
+      maxTokens: state.settings.maxTokens,
+      tools: true,
+      streaming: true,
+    },
+    claudeMd: `# Claude Code Project\n\n## Agents\nPre-installed: ${AGENTS.map(a=>a.type).join(', ')}\n\n## Skills\nPre-installed: ${SKILLS.map(s=>s.cmd).join(', ')}\n`,
+    readme: 'This bundle was downloaded from Claude Code Mobile. Place agents.json and skills.json in your .claude/ directory.',
+  };
+  const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'claude-code-bundle.json';
+  a.click();
+  toast('Downloading full bundle...');
+}
+
+// ==================== STATUS ====================
+function setStatus(text, color) {
+  document.getElementById('status-text').textContent = text;
+  const dot = document.getElementById('status-dot');
+  dot.className = 'status-dot' + (color === 'red' ? ' red' : color === 'yellow' ? ' yellow' : '');
+}
+
+// ==================== TOAST ====================
+function toast(msg, duration = 2500) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), duration);
+}
+
+// ==================== CONTEXT MENU ====================
+function showCtxMenu(e, name) {
+  e.preventDefault();
+  const menu = document.getElementById('ctx-menu');
+  menu.innerHTML = `
+    <div class="ctx-item" onclick="openFile('${name}','${getExt(name)}')">📂 Open</div>
+    <div class="ctx-item" onclick="copyToClipboard('${name}')">📋 Copy name</div>
+    <div class="ctx-sep"></div>
+    <div class="ctx-item" onclick="askAboutFile('${name}')">💬 Ask Claude about</div>
+  `;
+  menu.style.left = Math.min(e.clientX, window.innerWidth - 170) + 'px';
+  menu.style.top = Math.min(e.clientY, window.innerHeight - 120) + 'px';
+  menu.classList.add('show');
+  setTimeout(() => menu.classList.remove('show'), 3000);
+}
+
+function copyToClipboard(text) {
+  navigator.clipboard.writeText(text).then(() => toast('Copied!')).catch(() => toast('Copy failed'));
+  document.getElementById('ctx-menu').classList.remove('show');
+}
+
+function askAboutFile(name) {
+  document.getElementById('ctx-menu').classList.remove('show');
+  switchTab('chat', document.getElementById('btn-chat'));
+  document.getElementById('chat-input').value = `Explain the ${name} file and its purpose in this project.`;
+  autoResize(document.getElementById('chat-input'));
+}
+
+// ==================== SWIPE ====================
+function setupSwipe() {
+  let startX = 0, startY = 0;
+  const main = document.getElementById('main');
+  main.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+  }, { passive: true });
+  main.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - startX;
+    const dy = Math.abs(e.changedTouches[0].clientY - startY);
+    if (dy > 60) return;
+    if (dx > 60 && startX < 40) toggleSidebar();
+    if (dx < -60 && state.sidebarOpen) closeSidebar();
+  }, { passive: true });
+}
+
+// ==================== PWA ====================
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    // Inline service worker for offline support
+    const sw = `
+      self.addEventListener('install', e => e.waitUntil(
+        caches.open('cc-v1').then(c => c.add('/'))
+      ));
+      self.addEventListener('fetch', e => {
+        if (e.request.url.includes('api.anthropic.com')) return;
+        e.respondWith(caches.match(e.request).then(r => r || fetch(e.request)));
+      });
+    `;
+    try {
+      const blob = new Blob([sw], { type: 'application/javascript' });
+      navigator.serviceWorker.register(URL.createObjectURL(blob));
+    } catch {}
+  });
+}
+
+// ==================== INIT ====================
+document.addEventListener('DOMContentLoaded', () => {
+  init();
+  document.getElementById('status-model').textContent = state.model;
+});
+
+// Close context menu on click
+document.addEventListener('click', () => {
+  document.getElementById('ctx-menu').classList.remove('show');
+});
+
+// Keyboard shortcut for command palette
+document.addEventListener('keydown', e => {
+  if (e.key === '/' && e.ctrlKey) { e.preventDefault(); showCmdPalette(); }
+  if (e.key === 'Escape') { closeCmdPalette(); closeModal('api-modal'); }
+});
+</script>
+</body>
+</html>
