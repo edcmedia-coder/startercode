@@ -675,10 +675,11 @@ const state = {
   _modalProvider: 'gemini',
 };
 
-// Auto-detect provider from saved key on startup
+// Auto-correct provider from saved key — fixes stale 'demo' when a real key exists
 if (state.apiKey) {
   const det = detectProvider(state.apiKey);
-  if (det && det !== state.provider) state.provider = det;
+  if (det && det !== 'demo') state.provider = det; // always trust key format over stored provider
+  localStorage.setItem('cc_provider', state.provider);
 }
 
 // Defaults
@@ -1082,10 +1083,17 @@ async function callGemini(thinkingId) {
   );
   if (!resp.ok) {
     const err = await resp.json().catch(() => ({}));
-    const msg = err.error?.message || `HTTP ${resp.status}`;
-    if (resp.status === 400) throw new Error(msg + ' — check your Gemini key is valid');
-    if (resp.status === 429) throw new Error('Rate limit hit — wait a moment and retry');
-    throw new Error(msg);
+    const msg = err.error?.message || 'Unknown error';
+    if (resp.status === 429) {
+      // Auto-retry once after 3s for rate limit
+      setStatus('Rate limited — retrying in 3s...', 'yellow');
+      await new Promise(r => setTimeout(r, 3000));
+      return callGemini(thinkingId); // retry
+    }
+    if (resp.status === 400) throw new Error('Invalid request — check your Gemini key at aistudio.google.com');
+    if (resp.status === 403) throw new Error('API key rejected — get a free key at aistudio.google.com');
+    if (resp.status === 401) throw new Error('Unauthorized — your Gemini key may be invalid or revoked');
+    throw new Error('Gemini API: ' + msg);
   }
   return streamSSE(resp, thinkingId, json => {
     return json.candidates?.[0]?.content?.parts?.[0]?.text || '';
@@ -1155,26 +1163,66 @@ async function streamSSE(resp, thinkingId, extractText) {
   return fullText;
 }
 
-// ---- Demo mode with smart simulated responses ----
-const DEMO_RESPONSES = [
-  { match: /hello|hi|hey/i, reply: `👋 Hello! I'm Claude Code in **Demo Mode**.\n\nI'm simulating AI responses so you can explore the full UI without an API key.\n\nTo get real AI responses, tap the 🔑 key icon and add a **free Gemini API key** from [aistudio.google.com](https://aistudio.google.com).` },
-  { match: /gemini|api key|free key/i, reply: `## Getting a Free Gemini API Key\n\n1. Go to **aistudio.google.com**\n2. Sign in with your Google account\n3. Click **"Get API key"** → **"Create API key"**\n4. Copy the key (starts with \`AIza...\`)\n5. Tap 🔑 in this app → paste your key\n\nThe free tier includes:\n- **gemini-2.0-flash** ✅ Free\n- **gemini-1.5-flash** ✅ Free\n- 15 requests/minute, 1M tokens/day\n\nNo credit card needed!` },
-  { match: /\/init|initialize|claude\.md/i, reply: `## /init — Initializing CLAUDE.md\n\n\`\`\`markdown\n# Claude Code Project\n\n## Architecture\n- **Stack:** Node.js, Express, SQLite\n- **Entry:** src/index.js\n- **Config:** .claude/settings.json\n\n## Commands\n- \`npm start\` — Start development server\n- \`npm test\` — Run test suite\n- \`npm run lint\` — Check code style\n\n## Key Files\n- \`src/index.js\` — App entry point\n- \`src/utils.js\` — Shared utilities\n- \`CLAUDE.md\` — This file\n\`\`\`\n\nCLAUDE.md created! Claude will now read this on every session start.` },
-  { match: /\/review|review|pull request|pr/i, reply: `## /review — Code Review\n\n**Summary:** 3 files changed, 47 insertions, 12 deletions\n\n### Issues Found\n\n🔴 **High** — SQL injection risk in \`src/db.js:34\`\n\`\`\`js\n// Vulnerable:\ndb.query(\`SELECT * FROM users WHERE id = ${userId}\`)\n// Fix:\ndb.query('SELECT * FROM users WHERE id = ?', [userId])\n\`\`\`\n\n🟡 **Medium** — Missing error handling in \`src/api.js:78\`\n\n🟢 **Good** — Clean async/await usage throughout\n\n**Verdict:** Fix SQL injection before merging.` },
-  { match: /\/fix|bug|error|broken/i, reply: `## /fix — Bug Analysis\n\nScanning codebase for issues...\n\n**Found 2 bugs:**\n\n### Bug 1: Null reference at \`src/utils.js:23\`\n\`\`\`js\n// Before (crashes if user is null):\nconst name = user.profile.name;\n\n// After (safe):\nconst name = user?.profile?.name ?? 'Unknown';\n\`\`\`\n\n### Bug 2: Memory leak in event listener\n\`\`\`js\n// Before:\nwindow.addEventListener('resize', handler);\n\n// After (cleanup on unmount):\nconst cleanup = () => window.removeEventListener('resize', handler);\nreturn cleanup;\n\`\`\`\n\nBoth fixes applied ✅` },
-  { match: /\/explain|explain|what does|how does/i, reply: `## /explain — Code Explanation\n\nThis code implements a **debounce function** — a performance optimization that delays calling a function until after a user stops performing an action (like typing).\n\n**How it works:**\n1. When called, starts a timer\n2. If called again before timer fires → resets timer\n3. Only executes after the delay with no new calls\n\n**Use cases:** Search inputs, window resize handlers, API calls on keypress\n\n**Time complexity:** O(1) — constant time per invocation` },
-  { match: /\/test|test|jest|unit test/i, reply: `## /test — Generated Test Suite\n\n\`\`\`javascript\nimport { describe, it, expect, vi } from 'vitest';\nimport { greet, add, fetchUser } from './utils.js';\n\ndescribe('greet()', () => {\n  it('returns greeting with name', () => {\n    expect(greet('Alice')).toBe('Hello, Alice!');\n  });\n  it('handles empty string', () => {\n    expect(greet('')).toBe('Hello, !');\n  });\n});\n\ndescribe('fetchUser()', () => {\n  it('fetches user by id', async () => {\n    const user = await fetchUser(1);\n    expect(user).toHaveProperty('id', 1);\n  });\n  it('throws on invalid id', async () => {\n    await expect(fetchUser(-1)).rejects.toThrow();\n  });\n});\n\`\`\`\n\n✅ 4 tests generated — run with \`npm test\`` },
-  { match: /\/security|security|owasp|vulnerability|injection/i, reply: `## /security-review — Security Audit\n\n### Critical Issues\n🔴 **SQL Injection** — \`db.js:34\` — use parameterized queries\n🔴 **XSS** — \`render.js:12\` — sanitize HTML with DOMPurify\n\n### High Issues\n🟠 **Hardcoded secrets** — \`config.js:5\` — move to .env\n🟠 **Missing CSRF token** — POST endpoints unprotected\n\n### Medium Issues\n🟡 **Outdated dependency** — express@4.17 has known CVEs\n🟡 **Missing rate limiting** — auth endpoints vulnerable to brute force\n\n### Good Practices Observed\n✅ HTTPS enforced\n✅ Password hashing with bcrypt\n✅ JWT expiration set\n\n**Risk Score: 6.2/10** — Fix critical issues before production.` },
-  { match: /skill|agent|feature|can you|what can/i, reply: `## What I Can Do\n\n**Skills (slash commands):**\n- \`/init\` — Initialize project docs\n- \`/review\` — Code review\n- \`/security-review\` — Security audit\n- \`/fix\` — Fix bugs automatically\n- \`/test\` — Generate test suites\n- \`/explain\` — Explain any code\n- \`/optimize\` — Performance improvements\n- \`/docs\` — Generate documentation\n\n**Agents (specialized modes):**\n- 🔭 **Explore** — Find code fast\n- 🗺️ **Plan** — Architecture design\n- 💻 **Code** — Full implementation\n- 🧪 **Test** — Test specialist\n- 🔒 **Security** — Vulnerability scanner\n\n**Tools:** Read, Write, Edit, Bash, WebSearch, WebFetch, TodoWrite, Agent\n\nConnect a **free Gemini key** to run these for real!` },
+// ---- Demo mode responses (var not const — prevents TDZ if something goes wrong) ----
+// NOTE: any ${} inside these strings must be escaped as \${} to avoid ReferenceError at init time
+var DEMO_RESPONSES = [
+  {
+    match: /hello|hi|hey/i,
+    reply: '👋 Hello! I\'m Claude Code in **Demo Mode**.\n\nI\'m simulating AI responses so you can explore the full UI without an API key.\n\nTo get real AI responses, tap the 🔑 key icon and add a **free Gemini API key** from aistudio.google.com',
+  },
+  {
+    match: /gemini|api key|free key/i,
+    reply: '## Getting a Free Gemini API Key\n\n1. Go to **aistudio.google.com**\n2. Sign in with your Google account\n3. Click **"Get API key"** → **"Create API key"**\n4. Copy the key (starts with `AIza...`)\n5. Tap 🔑 in this app → paste your key\n\nThe free tier includes:\n- **gemini-2.0-flash** ✅ Free\n- **gemini-1.5-flash** ✅ Free\n- 15 requests/minute, 1M tokens/day\n\nNo credit card needed!',
+  },
+  {
+    match: /\/init|initialize|claude\.md/i,
+    reply: '## /init — Initializing CLAUDE.md\n\n```markdown\n# Claude Code Project\n\n## Architecture\n- **Stack:** Node.js, Express, SQLite\n- **Entry:** src/index.js\n\n## Commands\n- `npm start` — Start server\n- `npm test` — Run tests\n- `npm run lint` — Lint code\n```\n\nCLAUDE.md created! Claude reads this on every session start.',
+  },
+  {
+    match: /\/review|review|pull request|pr/i,
+    reply: '## /review — Code Review\n\n**Summary:** 3 files changed, 47 insertions, 12 deletions\n\n### Issues Found\n\n🔴 **High** — SQL injection risk in `src/db.js:34`\n```js\n// Vulnerable:\ndb.query("SELECT * FROM users WHERE id = " + userId)\n// Fix:\ndb.query("SELECT * FROM users WHERE id = ?", [userId])\n```\n\n🟡 **Medium** — Missing error handling in `src/api.js:78`\n\n🟢 **Good** — Clean async/await usage throughout\n\n**Verdict:** Fix SQL injection before merging.',
+  },
+  {
+    match: /\/fix|bug|error|broken/i,
+    reply: '## /fix — Bug Analysis\n\nScanning codebase for issues...\n\n**Found 2 bugs:**\n\n### Bug 1: Null reference at `src/utils.js:23`\n```js\n// Before (crashes if user is null):\nconst name = user.profile.name;\n\n// After (safe):\nconst name = user?.profile?.name ?? "Unknown";\n```\n\n### Bug 2: Memory leak in event listener\n```js\n// After (cleanup on unmount):\nconst cleanup = () => window.removeEventListener("resize", handler);\nreturn cleanup;\n```\n\nBoth fixes applied ✅',
+  },
+  {
+    match: /\/explain|explain|what does|how does/i,
+    reply: '## /explain — Code Explanation\n\nThis code implements a **debounce function** — a performance optimization that delays calling a function until after a user stops performing an action (like typing).\n\n**How it works:**\n1. When called, starts a timer\n2. If called again before timer fires → resets timer\n3. Only executes after the delay with no new calls\n\n**Use cases:** Search inputs, window resize handlers, API calls on keypress',
+  },
+  {
+    match: /\/test|test|jest|unit test/i,
+    reply: '## /test — Generated Test Suite\n\n```javascript\nimport { describe, it, expect } from "vitest";\nimport { greet, fetchUser } from "./utils.js";\n\ndescribe("greet()", () => {\n  it("returns greeting with name", () => {\n    expect(greet("Alice")).toBe("Hello, Alice!");\n  });\n  it("handles empty string", () => {\n    expect(greet("")).toBe("Hello, !");\n  });\n});\n\ndescribe("fetchUser()", () => {\n  it("fetches user by id", async () => {\n    const user = await fetchUser(1);\n    expect(user).toHaveProperty("id", 1);\n  });\n});\n```\n\n✅ 4 tests generated — run with `npm test`',
+  },
+  {
+    match: /\/security|security|owasp|vulnerability|injection/i,
+    reply: '## /security-review — Security Audit\n\n### Critical\n🔴 **SQL Injection** — `db.js:34` — use parameterized queries\n🔴 **XSS** — `render.js:12` — sanitize HTML with DOMPurify\n\n### High\n🟠 **Hardcoded secrets** — `config.js:5` — move to .env\n🟠 **Missing CSRF token** — POST endpoints unprotected\n\n### Medium\n🟡 **Outdated dependency** — express@4.17 has known CVEs\n🟡 **Missing rate limiting** — auth vulnerable to brute force\n\n### Good\n✅ HTTPS enforced\n✅ Passwords hashed with bcrypt\n\n**Risk Score: 6.2/10** — Fix criticals before production.',
+  },
+  {
+    match: /optimize|performance|speed|slow/i,
+    reply: '## /optimize — Performance Analysis\n\n**Profiling results:**\n\n```\nFunction          Calls   Avg ms   Total\nuserList()         1,204     42ms   50.5s  ← bottleneck\nrenderItem()      24,080      2ms   48.2s\nfetchData()           12    320ms    3.8s\n```\n\n**Fixes applied:**\n- Added `useMemo` to `userList()` → 95% faster\n- Virtualized list (only renders visible rows)\n- Debounced `fetchData()` on scroll\n\n**Result: 4.2s → 0.3s page load** ✅',
+  },
+  {
+    match: /\/docs|docs|documentation|readme/i,
+    reply: '## /docs — Documentation Generated\n\n```markdown\n# API Reference\n\n## `greet(name: string): string`\nReturns a greeting string.\n\n**Parameters:**\n- `name` — The name to greet\n\n**Returns:** Formatted greeting string\n\n**Example:**\n```js\ngreet("Alice") // => "Hello, Alice!"\n```\n\n## `fetchUser(id: number): Promise<User>`\nFetches a user by ID from the API.\n```\n\n✅ Docs written to `docs/api.md`',
+  },
+  {
+    match: /skill|agent|feature|can you|what can/i,
+    reply: '## What I Can Do\n\n**Skills (slash commands):**\n- `/init` — Initialize project docs\n- `/review` — Code review\n- `/security-review` — Security audit\n- `/fix` — Fix bugs automatically\n- `/test` — Generate test suites\n- `/explain` — Explain any code\n- `/optimize` — Performance improvements\n- `/docs` — Generate documentation\n\n**Agents:**\n- 🔭 **Explore** — Find code fast\n- 🗺️ **Plan** — Architecture design\n- 💻 **Code** — Full implementation\n- 🧪 **Test** — Test specialist\n- 🔒 **Security** — Vulnerability scanner\n\nConnect a **free Gemini key** to run these for real!',
+  },
 ];
 
 async function callDemo(userText) {
-  // Simulate network delay
-  await new Promise(r => setTimeout(r, 600 + Math.random() * 800));
-  const match = DEMO_RESPONSES.find(r => r.match.test(userText));
-  if (match) return match.reply;
-  // Generic response
-  return `I'm in **Demo Mode** and received: *"${userText.slice(0, 80)}${userText.length > 80 ? '...' : ''}"*\n\nIn real mode (with a Gemini or Anthropic key), I would:\n1. Analyze your request thoroughly\n2. Search relevant files and docs\n3. Execute the task with full tool access\n4. Return detailed, accurate results\n\n**Get a free Gemini key** at aistudio.google.com to unlock real AI responses! Tap 🔑 above.`;
+  await new Promise(r => setTimeout(r, 500 + Math.random() * 700));
+  try {
+    const responses = DEMO_RESPONSES; // reference once — surfaces TDZ immediately with clear message
+    const match = responses.find(r => r.match.test(userText));
+    if (match) return match.reply;
+  } catch (e) {
+    return '⚠️ Demo responses failed to load. Try reloading the app.';
+  }
+  const preview = userText.slice(0, 80) + (userText.length > 80 ? '...' : '');
+  return '**Demo Mode** — I received: *"' + preview + '"*\n\nFor real AI responses, tap 🔑 above and add a **free Gemini key** from aistudio.google.com\n\nOr try commands like `/init`, `/review`, `/fix`, `/test`, `/explain`';
 }
 
 function addMessage(role, content) {
