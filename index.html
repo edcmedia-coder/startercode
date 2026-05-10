@@ -579,6 +579,59 @@ console.log(greet('Developer'));
 }
 </style>
 
+<!-- Create Skill Modal -->
+<div class="modal" id="create-skill-modal">
+  <div class="modal-content">
+    <div class="modal-handle"></div>
+    <div class="modal-title">⚡ Create Custom Skill</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
+      <div style="display:flex;gap:8px;">
+        <input id="new-skill-icon" placeholder="Icon (emoji)" style="width:80px;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:6px;font-size:16px;text-align:center;outline:none;">
+        <input type="color" id="new-skill-color" value="#f59e0b" style="width:44px;height:36px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:var(--bg3);padding:2px;">
+        <input id="new-skill-name" placeholder="Skill name *" style="flex:1;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:6px;font-family:var(--font);font-size:13px;outline:none;">
+      </div>
+      <input id="new-skill-cmd" placeholder="Command e.g. /myskill *" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:6px;font-family:var(--font);font-size:13px;outline:none;">
+      <input id="new-skill-desc" placeholder="Short description" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:6px;font-family:var(--font);font-size:13px;outline:none;">
+      <textarea id="new-skill-prompt" placeholder="System prompt — tells the AI how to behave when this skill runs. Example: You are a documentation writer. Generate JSDoc comments for all functions..." style="background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:6px;font-family:var(--font);font-size:12px;min-height:90px;resize:vertical;outline:none;line-height:1.5;"></textarea>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="saveNewSkill()" style="flex:1;padding:12px;background:var(--accent);color:#000;border:none;border-radius:8px;font-family:var(--font);font-size:13px;font-weight:700;cursor:pointer;">Create Skill</button>
+      <button onclick="closeModal('create-skill-modal')" style="padding:12px 16px;background:var(--bg3);color:var(--text2);border:1px solid var(--border);border-radius:8px;font-family:var(--font);font-size:13px;cursor:pointer;">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Create Agent Modal -->
+<div class="modal" id="create-agent-modal">
+  <div class="modal-content">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🤖 Create Custom Agent</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
+      <div style="display:flex;gap:8px;">
+        <input id="new-agent-icon" placeholder="Icon" style="width:80px;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:6px;font-size:16px;text-align:center;outline:none;">
+        <input type="color" id="new-agent-color" value="#58a6ff" style="width:44px;height:36px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:var(--bg3);padding:2px;">
+        <input id="new-agent-name" placeholder="Agent name *" style="flex:1;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:6px;font-family:var(--font);font-size:13px;outline:none;">
+      </div>
+      <input id="new-agent-type" placeholder="Type ID e.g. myagent (used in /agent command) *" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:6px;font-family:var(--font);font-size:13px;outline:none;">
+      <input id="new-agent-desc" placeholder="Short description of what this agent specializes in" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:6px;font-family:var(--font);font-size:13px;outline:none;">
+      <textarea id="new-agent-prompt" placeholder="Agent system prompt — defines the agent's persona, expertise, and behavior. Example: You are a GraphQL expert. Specialize in schema design, resolvers, federation, and performance optimization..." style="background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:6px;font-family:var(--font);font-size:12px;min-height:90px;resize:vertical;outline:none;line-height:1.5;"></textarea>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="saveNewAgent()" style="flex:1;padding:12px;background:var(--accent);color:#000;border:none;border-radius:8px;font-family:var(--font);font-size:13px;font-weight:700;cursor:pointer;">Create Agent</button>
+      <button onclick="closeModal('create-agent-modal')" style="padding:12px 16px;background:var(--bg3);color:var(--text2);border:1px solid var(--border);border-radius:8px;font-family:var(--font);font-size:13px;cursor:pointer;">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Marketplace Modal -->
+<div class="modal" id="marketplace-modal" onclick="if(event.target===this)closeModal('marketplace-modal')">
+  <div class="modal-content" style="max-height:88vh;">
+    <div class="modal-handle"></div>
+    <div id="marketplace-content" style="overflow-y:auto;max-height:70vh;"></div>
+    <button onclick="closeModal('marketplace-modal')" style="width:100%;padding:12px;background:var(--bg3);color:var(--text2);border:1px solid var(--border);border-radius:8px;font-family:var(--font);font-size:13px;cursor:pointer;margin-top:12px;">Close</button>
+  </div>
+</div>
+
 <!-- Toast -->
 <div id="toast"></div>
 
@@ -706,21 +759,60 @@ state.settings = Object.assign({
 
 // ==================== SKILLS DATA ====================
 const SKILLS = [
-  { icon: '📋', name: 'init', cmd: '/init', desc: 'Initialize CLAUDE.md with codebase docs', color: '#3fb950' },
-  { icon: '🔍', name: 'review', cmd: '/review', desc: 'Review pull request changes', color: '#58a6ff' },
-  { icon: '🔒', name: 'security-review', cmd: '/security-review', desc: 'Security audit of pending changes', color: '#f85149' },
-  { icon: '✨', name: 'simplify', cmd: '/simplify', desc: 'Refactor code for quality & efficiency', color: '#bc8cff' },
-  { icon: '🐛', name: 'fix', cmd: '/fix', desc: 'Find and fix bugs in code', color: '#ffa657' },
-  { icon: '💡', name: 'explain', cmd: '/explain', desc: 'Explain code in plain English', color: '#79c0ff' },
-  { icon: '🧪', name: 'test', cmd: '/test', desc: 'Generate comprehensive test suites', color: '#3fb950' },
-  { icon: '📝', name: 'docs', cmd: '/docs', desc: 'Generate documentation', color: '#8b949e' },
-  { icon: '🚀', name: 'optimize', cmd: '/optimize', desc: 'Optimize code for performance', color: '#ffa657' },
-  { icon: '🔄', name: 'refactor', cmd: '/refactor', desc: 'Refactor with best practices', color: '#bc8cff' },
-  { icon: '🌐', name: 'translate', cmd: '/translate', desc: 'Convert code between languages', color: '#58a6ff' },
-  { icon: '📊', name: 'analyze', cmd: '/analyze', desc: 'Deep code analysis & insights', color: '#79c0ff' },
-  { icon: '⚙️', name: 'update-config', cmd: '/update-config', desc: 'Configure Claude Code settings', color: '#8b949e' },
-  { icon: '🎣', name: 'session-start', cmd: '/session-start', desc: 'Set up startup hooks', color: '#3fb950' },
-  { icon: '🔑', name: 'api-setup', cmd: '/api-setup', desc: 'Configure Claude API integration', color: '#f59e0b' },
+  { icon: '📋', name: 'init', cmd: '/init', desc: 'Initialize CLAUDE.md with codebase docs', color: '#3fb950',
+    prompt: 'Analyze this codebase and create a comprehensive CLAUDE.md file covering: project overview, tech stack, key files, build/test/deploy commands, coding conventions, and AI assistance notes. Be thorough but scannable.' },
+  { icon: '🔍', name: 'review', cmd: '/review', desc: 'Review code for bugs, security & style', color: '#58a6ff',
+    prompt: 'Perform a thorough code review. Check for: bugs and logic errors, security vulnerabilities (OWASP Top 10), performance issues, code style and maintainability, missing tests. Format by severity: Critical, High, Medium, Low.' },
+  { icon: '🔒', name: 'security-review', cmd: '/security-review', desc: 'Security audit — OWASP, injection, auth', color: '#f85149',
+    prompt: 'Perform a comprehensive security audit. Check: SQL injection, XSS, CSRF, auth flaws, authorization issues, sensitive data exposure, insecure dependencies, hardcoded secrets, input validation, OWASP Top 10. Give a risk score 1-10 and prioritized fixes.' },
+  { icon: '✨', name: 'simplify', cmd: '/simplify', desc: 'Refactor code for quality & efficiency', color: '#bc8cff',
+    prompt: 'Simplify and improve code quality without changing behavior. Apply DRY principle, improve naming, reduce complexity, use modern language features, improve readability. Show refactored code with brief explanation of each change.' },
+  { icon: '🐛', name: 'fix', cmd: '/fix', desc: 'Find and fix bugs with root cause analysis', color: '#ffa657',
+    prompt: 'Debug this code. Identify the root cause, explain why the bug occurs, and provide a minimal targeted fix. Show before/after code snippets. Add a test case to verify the fix works.' },
+  { icon: '💡', name: 'explain', cmd: '/explain', desc: 'Explain code in plain English', color: '#79c0ff',
+    prompt: 'Explain this code clearly for an intermediate developer. Cover: what it does, how it works, why it is designed this way, important edge cases, and potential gotchas. Use analogies where helpful.' },
+  { icon: '🧪', name: 'test', cmd: '/test', desc: 'Generate comprehensive test suites', color: '#3fb950',
+    prompt: 'Generate comprehensive tests: happy paths, edge cases, error conditions, boundary values. Use Jest/Vitest for JS or pytest for Python. Include setup, teardown, meaningful assertions, and aim for high branch coverage.' },
+  { icon: '📝', name: 'docs', cmd: '/docs', desc: 'Generate JSDoc/TSDoc documentation', color: '#8b949e',
+    prompt: 'Generate comprehensive documentation: function signatures, parameter descriptions, return values, usage examples, error conditions, and caveats. Follow JSDoc/TSDoc conventions. Also generate a README section if appropriate.' },
+  { icon: '🚀', name: 'optimize', cmd: '/optimize', desc: 'Optimize for performance & efficiency', color: '#ffa657',
+    prompt: 'Optimize this code for performance. Analyze time/space complexity, identify bottlenecks, suggest algorithmic improvements, reduce unnecessary re-renders or queries, improve memory usage. Show before/after complexity.' },
+  { icon: '🔄', name: 'refactor', cmd: '/refactor', desc: 'Refactor with SOLID principles', color: '#bc8cff',
+    prompt: 'Refactor this code applying SOLID principles, design patterns, and best practices. Reduce coupling, improve cohesion, extract reusable components. Preserve all existing behavior while making the code more maintainable.' },
+  { icon: '🌐', name: 'translate', cmd: '/translate', desc: 'Convert code between languages', color: '#58a6ff',
+    prompt: 'Translate this code to the target language using idiomatic patterns. Handle language-specific differences in types, error handling, async patterns, and conventions. Note any incompatibilities or behavioral differences.' },
+  { icon: '📊', name: 'analyze', cmd: '/analyze', desc: 'Deep code analysis & architecture review', color: '#79c0ff',
+    prompt: 'Perform a deep analysis: architecture quality, dependency graph, coupling/cohesion metrics, code smells, technical debt, scalability concerns, and improvement roadmap. Be specific with file and line references.' },
+  { icon: '🐳', name: 'dockerfile', cmd: '/dockerfile', desc: 'Generate Dockerfile & docker-compose', color: '#2496ed',
+    prompt: 'Generate a production-ready Dockerfile and docker-compose.yml for this project. Use multi-stage builds, minimize image size, follow security best practices (non-root user, minimal base image, .dockerignore).' },
+  { icon: '🔁', name: 'ci', cmd: '/ci', desc: 'Generate CI/CD pipeline config', color: '#f59e0b',
+    prompt: 'Generate a complete CI/CD pipeline configuration (GitHub Actions preferred). Include: lint, test, build, security scan, and deploy stages. Add caching for dependencies and fail-fast on critical errors.' },
+  { icon: '🗄️', name: 'sql', cmd: '/sql', desc: 'Optimize SQL queries & schema', color: '#336791',
+    prompt: 'Analyze and optimize these SQL queries. Check: missing indexes, N+1 problems, slow JOINs, subquery performance, and schema normalization. Show EXPLAIN ANALYZE output interpretation and the optimized query.' },
+];
+
+// ==================== SKILLS MARKETPLACE ====================
+const MARKETPLACE_SKILLS = [
+  { icon: '🏗️', name: 'scaffold', cmd: '/scaffold', desc: 'Generate project boilerplate', color: '#3fb950',
+    prompt: 'Generate complete project scaffolding for the described project type. Include folder structure, config files, entry points, and a working hello-world example. Follow modern conventions for the tech stack.' },
+  { icon: '🗃️', name: 'migrate', cmd: '/migrate', desc: 'Generate database migration scripts', color: '#336791',
+    prompt: 'Generate database migration scripts with up and down methods. Follow the project\'s existing migration format. Include data migrations if needed and add rollback safety.' },
+  { icon: '♿', name: 'a11y', cmd: '/a11y', desc: 'Accessibility (WCAG) audit & fixes', color: '#7c3aed',
+    prompt: 'Audit this code for WCAG 2.1 AA accessibility compliance. Check: semantic HTML, ARIA labels, keyboard navigation, color contrast, focus management, screen reader compatibility. Provide specific fixes.' },
+  { icon: '📈', name: 'perf', cmd: '/perf', desc: 'Performance profiling & Web Vitals', color: '#ef4444',
+    prompt: 'Analyze for performance issues affecting Core Web Vitals (LCP, FID, CLS). Check: bundle size, render-blocking resources, lazy loading opportunities, caching strategies, and image optimization.' },
+  { icon: '🔷', name: 'types', cmd: '/types', desc: 'Add TypeScript types to JavaScript', color: '#3178c6',
+    prompt: 'Add comprehensive TypeScript types to this JavaScript code. Define interfaces for all data structures, add generic types where appropriate, use strict mode compatible types, and avoid using `any`.' },
+  { icon: '📋', name: 'changelog', cmd: '/changelog', desc: 'Generate CHANGELOG from code', color: '#8b949e',
+    prompt: 'Generate a CHANGELOG.md following Keep a Changelog format. Categorize changes into: Added, Changed, Deprecated, Removed, Fixed, Security. Use semantic versioning.' },
+  { icon: '🔗', name: 'api-design', cmd: '/api-design', desc: 'Design RESTful API endpoints', color: '#10b981',
+    prompt: 'Design RESTful API endpoints for this feature. Follow REST conventions, define request/response schemas, document error codes, suggest authentication approach, and generate an OpenAPI 3.0 spec snippet.' },
+  { icon: '🧩', name: 'regex', cmd: '/regex', desc: 'Build & explain regex patterns', color: '#f59e0b',
+    prompt: 'Build a regex pattern for the described use case. Explain each part of the pattern, provide test cases (matching and non-matching), note edge cases, and show usage in the target language.' },
+  { icon: '🌱', name: 'seed', cmd: '/seed', desc: 'Generate database seed data', color: '#22c55e',
+    prompt: 'Generate realistic database seed data for development and testing. Create factory functions, use faker-style realistic values, cover edge cases, and include scripts to run the seeds.' },
+  { icon: '🛡️', name: 'sanitize', cmd: '/sanitize', desc: 'Add input validation & sanitization', color: '#dc2626',
+    prompt: 'Add comprehensive input validation and sanitization. Check: type validation, length limits, format validation (email, URL, etc.), SQL injection prevention, XSS prevention. Use a validation library if available.' },
 ];
 
 // ==================== AGENTS DATA ====================
@@ -781,6 +873,34 @@ const AGENTS = [
     tools: ['Bash', 'Read', 'WebFetch', 'WebSearch'],
     prompt: 'Act as the Claude Code Guide agent. Answer questions about Claude Code CLI features, the Agent SDK, and the Claude API. Be precise and practical.',
   },
+];
+
+// ==================== AGENTS MARKETPLACE ====================
+const MARKETPLACE_AGENTS = [
+  { icon: '🗄️', name: 'Database Agent', type: 'database', color: '#336791',
+    desc: 'Specializes in SQL, schema design, query optimization, indexing strategies, and database migrations.',
+    tools: ['Read', 'Bash', 'WebSearch'],
+    prompt: 'Act as a Database expert. Specialize in: SQL optimization, schema design, indexing, query performance (EXPLAIN ANALYZE), migrations, and ORM usage. Always consider scalability and data integrity.' },
+  { icon: '🐳', name: 'DevOps Agent', type: 'devops', color: '#2496ed',
+    desc: 'Docker, Kubernetes, CI/CD pipelines, infrastructure as code, and cloud deployments.',
+    tools: ['Read', 'Write', 'Bash', 'WebSearch'],
+    prompt: 'Act as a DevOps engineer. Specialize in: Docker, Kubernetes, GitHub Actions, Terraform, monitoring (Prometheus/Grafana), and cloud infrastructure (AWS/GCP/Azure). Write production-ready configs.' },
+  { icon: '⚛️', name: 'Frontend Agent', type: 'frontend', color: '#61dafb',
+    desc: 'React, Vue, CSS, accessibility, Web Vitals, responsive design, and UI component architecture.',
+    tools: ['Read', 'Write', 'WebSearch'],
+    prompt: 'Act as a Frontend specialist. Specialize in: React/Vue component design, CSS/Tailwind, accessibility (WCAG), Core Web Vitals optimization, responsive design, and state management. Write clean, performant UI code.' },
+  { icon: '🔌', name: 'API Agent', type: 'api', color: '#10b981',
+    desc: 'REST, GraphQL, OpenAPI specs, authentication, rate limiting, and API versioning.',
+    tools: ['Read', 'Write', 'WebSearch'],
+    prompt: 'Act as an API design expert. Specialize in: RESTful design, GraphQL schemas, OpenAPI 3.0 specs, JWT/OAuth authentication, rate limiting, versioning strategies, and API documentation.' },
+  { icon: '⚡', name: 'Performance Agent', type: 'performance', color: '#ef4444',
+    desc: 'Profiling, benchmarking, algorithm optimization, memory management, and Core Web Vitals.',
+    tools: ['Read', 'Bash', 'WebSearch'],
+    prompt: 'Act as a Performance optimization expert. Profile code for bottlenecks, analyze algorithmic complexity, optimize memory usage, improve database queries, and enhance frontend loading speed. Always measure before and after.' },
+  { icon: '🏛️', name: 'Architecture Agent', type: 'architect', color: '#8b5cf6',
+    desc: 'System design, design patterns, microservices, scalability, and technical decision making.',
+    tools: ['Read', 'WebSearch'],
+    prompt: 'Act as a Software Architect. Analyze systems for: design patterns, coupling/cohesion, scalability, maintainability, and technical debt. Propose architectural improvements with trade-off analysis.' },
 ];
 
 // ==================== COMMANDS ====================
@@ -985,6 +1105,14 @@ async function callClaude(userText) {
   document.getElementById('send-btn').disabled = true;
   setStatus('Thinking...', 'yellow');
 
+  // Prepend agent or skill system context if set
+  if (state._agentPrompt || state._skillPrompt) {
+    const ctx = state._agentPrompt || state._skillPrompt;
+    state.settings._prevSystemPrompt = state.settings.systemPrompt;
+    state.settings.systemPrompt = ctx + '\n\n' + state.settings.systemPrompt;
+    state._agentPrompt = null; state._skillPrompt = null;
+  }
+
   const thinkingId = 'thinking-' + Date.now();
   const prov = PROVIDERS[state.provider] || PROVIDERS.demo;
   addRawMessage(`<div class="msg assistant" id="${thinkingId}"><div class="msg-avatar">C</div><div class="msg-bubble"><div class="thinking">Asking ${prov.name}</div></div></div>`);
@@ -1018,12 +1146,18 @@ async function callClaude(userText) {
     saveHistory();
     setStatus(prov.name + ' ✓', 'green');
   } catch (err) {
+    // Restore system prompt on error too
     const thinkEl = document.getElementById(thinkingId);
     if (thinkEl) thinkEl.remove();
     addMessage('assistant', `❌ **${prov.name} Error:** ${err.message}\n\nTip: Check your API key or switch to Demo Mode via the key icon.`);
     setStatus('Error', 'red');
   }
 
+  // Restore system prompt after skill/agent use
+  if (state.settings._prevSystemPrompt) {
+    state.settings.systemPrompt = state.settings._prevSystemPrompt;
+    state.settings._prevSystemPrompt = null;
+  }
   state.streaming = false;
   document.getElementById('send-btn').disabled = false;
 }
@@ -1067,7 +1201,7 @@ async function callAnthropic(thinkingId) {
 }
 
 // ---- Gemini ----
-async function callGemini(thinkingId, retriesLeft = 1) {
+async function callGemini(thinkingId, retriesLeft = 3) {
   // Ensure model is a valid Gemini model — auto-correct if stale value from another provider
   const validGeminiModels = PROVIDERS.gemini.models.map(m => m.value);
   if (!validGeminiModels.includes(state.model)) {
@@ -1120,11 +1254,20 @@ async function callGemini(thinkingId, retriesLeft = 1) {
     const err = await resp.json().catch(() => ({}));
     const msg = (err.error && err.error.message) || ('HTTP ' + resp.status);
     if (resp.status === 429 && retriesLeft > 0) {
-      setStatus('Rate limited — retrying in 4s...', 'yellow');
-      await new Promise(r => setTimeout(r, 4000));
+      const wait = (4 - retriesLeft) * 5; // 5s, 10s, 15s
+      let remaining = wait;
+      const countdown = setInterval(() => {
+        remaining--;
+        setStatus('Rate limited — retrying in ' + remaining + 's...', 'yellow');
+      }, 1000);
+      await new Promise(r => setTimeout(r, wait * 1000));
+      clearInterval(countdown);
       return callGemini(thinkingId, retriesLeft - 1);
     }
-    if (resp.status === 429) throw new Error('Gemini rate limit reached (15 req/min free tier). Wait a minute and try again.');
+    if (resp.status === 429) {
+      toast('Rate limit hit. Try gemini-2.0-flash-lite for higher limits.');
+      throw new Error('Gemini rate limit (15 req/min free tier). Wait ~1 minute, or switch to gemini-2.0-flash-lite in Config.');
+    }
     if (resp.status === 400) throw new Error('Gemini 400: ' + msg + '\n\nTip: Try a shorter conversation or different model.');
     if (resp.status === 401 || resp.status === 403) throw new Error('Gemini key rejected. Get a free key at aistudio.google.com');
     if (resp.status === 404) {
@@ -1480,58 +1623,234 @@ function handleCmdKey(e) {
 }
 
 // ==================== SKILLS ====================
+function getCustomSkills() {
+  try { return JSON.parse(localStorage.getItem('cc_custom_skills') || '[]'); } catch { return []; }
+}
+function saveCustomSkills(arr) { localStorage.setItem('cc_custom_skills', JSON.stringify(arr)); }
+function deleteCustomSkill(idx) {
+  const arr = getCustomSkills(); arr.splice(idx, 1); saveCustomSkills(arr); renderSkills(); toast('Skill deleted');
+}
+
 function renderSkills() {
-  const grid = document.getElementById('skills-grid');
-  grid.innerHTML = SKILLS.map(s => `
-    <div class="skill-card" onclick="runSkill(${JSON.stringify(s).replace(/"/g,'&quot;')})" style="border-top:3px solid ${s.color}">
-      <div class="skill-icon">${s.icon}</div>
-      <div class="skill-name">${s.name}</div>
-      <div class="skill-desc">${s.desc}</div>
-      <div class="skill-cmd">${s.cmd}</div>
+  const panel = document.getElementById('skills-panel');
+  const custom = getCustomSkills();
+  const allSkills = [...SKILLS, ...custom];
+
+  panel.innerHTML = `
+    <div style="padding:12px;border-bottom:1px solid var(--border);background:var(--bg2);display:flex;align-items:center;gap:8px;">
+      <div style="flex:1">
+        <div style="font-size:15px;font-weight:700;">Skills</div>
+        <div style="font-size:11px;color:var(--text2);">${allSkills.length} installed · ${MARKETPLACE_SKILLS.length} available</div>
+      </div>
+      <button onclick="showSkillsMarketplace()" style="padding:6px 10px;background:var(--bg3);border:1px solid var(--border);color:var(--blue);border-radius:6px;font-family:var(--font);font-size:11px;cursor:pointer;">🛒 Store</button>
+      <button onclick="showCreateSkill()" style="padding:6px 10px;background:var(--accent);border:none;color:#000;border-radius:6px;font-family:var(--font);font-size:11px;font-weight:700;cursor:pointer;">+ Create</button>
     </div>
-  `).join('');
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px;overflow-y:auto;">
+      ${SKILLS.map(s => skillCard(s, false, -1)).join('')}
+      ${custom.map((s,i) => skillCard(s, true, i)).join('')}
+    </div>`;
+}
+
+function skillCard(s, isCustom, idx) {
+  const data = JSON.stringify(s).replace(/"/g,'&quot;');
+  return `<div class="skill-card" style="border-top:3px solid ${s.color||'#888'}">
+    <div style="display:flex;align-items:flex-start;gap:4px;">
+      <span style="font-size:20px;flex:1">${s.icon||'⚡'}</span>
+      ${isCustom ? `<button onclick="deleteCustomSkill(${idx})" style="background:transparent;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:0;" title="Delete">✕</button>` : ''}
+    </div>
+    <div class="skill-name">${s.name}</div>
+    <div class="skill-desc">${s.desc}</div>
+    <div class="skill-cmd" onclick="runSkill(${data})" style="cursor:pointer;margin-top:4px;padding:4px 0;">${s.cmd}</div>
+  </div>`;
 }
 
 function runSkill(skill) {
   if (typeof skill === 'string') skill = JSON.parse(skill);
   switchTab('chat', document.getElementById('btn-chat'));
   const input = document.getElementById('chat-input');
-  input.value = skill.cmd + ' ';
+  // Inject the skill's real prompt into the message so the AI follows it
+  const msg = skill.prompt ? skill.cmd + '\n\n[Skill prompt: ' + skill.prompt + ']' : skill.cmd + ' ';
+  input.value = skill.prompt ? '' : skill.cmd + ' ';
   autoResize(input);
   input.focus();
-  addMessage('system', `Running skill: ${skill.cmd}`);
+  // If skill has a real prompt, send it directly with the injected context
+  if (skill.prompt) {
+    addMessage('system', 'Running skill: ' + skill.cmd);
+    addMessage('user', skill.cmd);
+    if (state.apiKey || state.provider === 'demo') {
+      // Temporarily set skill system context
+      state._skillPrompt = skill.prompt;
+      callClaude(skill.cmd);
+    }
+  } else {
+    addMessage('system', 'Running skill: ' + skill.cmd);
+  }
+}
+
+function showCreateSkill() {
+  document.getElementById('create-skill-modal').classList.add('show');
+}
+
+function showSkillsMarketplace() {
+  const modal = document.getElementById('marketplace-modal');
+  const content = document.getElementById('marketplace-content');
+  const installed = getCustomSkills().map(s => s.cmd);
+  content.innerHTML = '<div style="font-size:14px;font-weight:700;margin-bottom:12px;">🛒 Skills Store</div>' +
+    MARKETPLACE_SKILLS.map(s => {
+      const isInstalled = installed.includes(s.cmd);
+      const data = JSON.stringify(s).replace(/"/g,'&quot;');
+      return `<div style="background:var(--bg3);border:1px solid var(--border);border-left:3px solid ${s.color};border-radius:8px;padding:12px;margin-bottom:8px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <span style="font-size:18px">${s.icon}</span>
+          <div style="flex:1"><div style="font-weight:700;font-size:12px">${s.name}</div><div style="font-size:10px;color:var(--accent)">${s.cmd}</div></div>
+          ${isInstalled
+            ? '<span style="font-size:10px;color:var(--green);background:rgba(63,185,80,0.1);padding:2px 8px;border-radius:10px;">Installed</span>'
+            : `<button onclick="installSkill(${data})" style="padding:4px 10px;background:var(--accent);border:none;color:#000;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">Install</button>`}
+        </div>
+        <div style="font-size:11px;color:var(--text2)">${s.desc}</div>
+      </div>`;
+    }).join('');
+  modal.classList.add('show');
+}
+
+function installSkill(skill) {
+  const arr = getCustomSkills();
+  if (arr.find(s => s.cmd === skill.cmd)) { toast('Already installed'); return; }
+  arr.push(skill);
+  saveCustomSkills(arr);
+  renderSkills();
+  toast('Installed: ' + skill.cmd);
+  showSkillsMarketplace(); // refresh
+}
+
+function saveNewSkill() {
+  const name = document.getElementById('new-skill-name').value.trim();
+  const cmd = document.getElementById('new-skill-cmd').value.trim();
+  const desc = document.getElementById('new-skill-desc').value.trim();
+  const prompt = document.getElementById('new-skill-prompt').value.trim();
+  const icon = document.getElementById('new-skill-icon').value.trim() || '⚡';
+  const color = document.getElementById('new-skill-color').value || '#888888';
+  if (!name || !cmd) { toast('Name and command required'); return; }
+  const fixedCmd = cmd.startsWith('/') ? cmd : '/' + cmd;
+  const arr = getCustomSkills();
+  arr.push({ icon, name, cmd: fixedCmd, desc: desc || name, prompt, color });
+  saveCustomSkills(arr);
+  renderSkills();
+  document.getElementById('create-skill-modal').classList.remove('show');
+  ['new-skill-name','new-skill-cmd','new-skill-desc','new-skill-prompt'].forEach(id => { document.getElementById(id).value = ''; });
+  toast('Skill created: ' + fixedCmd);
 }
 
 // ==================== AGENTS ====================
+function getCustomAgents() {
+  try { return JSON.parse(localStorage.getItem('cc_custom_agents') || '[]'); } catch { return []; }
+}
+function saveCustomAgents(arr) { localStorage.setItem('cc_custom_agents', JSON.stringify(arr)); }
+function deleteCustomAgent(idx) {
+  const arr = getCustomAgents(); arr.splice(idx, 1); saveCustomAgents(arr); renderAgents(); toast('Agent deleted');
+}
+
 function renderAgents() {
-  const list = document.getElementById('agents-list');
-  list.innerHTML = AGENTS.map((a, i) => `
-    <div class="agent-card" style="border-top:3px solid ${a.color}">
-      <div class="agent-header">
-        <div class="agent-icon" style="background:${a.color}20">${a.icon}</div>
-        <div>
-          <div class="agent-name">${a.name}</div>
-          <span class="agent-type">${a.type}</span>
-        </div>
+  const panel = document.getElementById('agents-panel');
+  const custom = getCustomAgents();
+  const allAgents = [...AGENTS, ...custom];
+
+  panel.innerHTML = `
+    <div style="padding:12px;border-bottom:1px solid var(--border);background:var(--bg2);display:flex;align-items:center;gap:8px;">
+      <div style="flex:1">
+        <div style="font-size:15px;font-weight:700;">Agents</div>
+        <div style="font-size:11px;color:var(--text2);">${allAgents.length} installed · ${MARKETPLACE_AGENTS.length} available</div>
       </div>
-      <div class="agent-desc">${a.desc}</div>
-      <div class="agent-tools">${a.tools.map(t => `<span class="tool-tag">${t}</span>`).join('')}</div>
-      <button class="agent-btn" onclick="activateAgent(AGENTS[${i}])">→ Activate Agent</button>
+      <button onclick="showAgentsMarketplace()" style="padding:6px 10px;background:var(--bg3);border:1px solid var(--border);color:var(--blue);border-radius:6px;font-family:var(--font);font-size:11px;cursor:pointer;">🛒 Store</button>
+      <button onclick="showCreateAgent()" style="padding:6px 10px;background:var(--accent);border:none;color:#000;border-radius:6px;font-family:var(--font);font-size:11px;font-weight:700;cursor:pointer;">+ Create</button>
     </div>
-  `).join('');
+    <div style="padding:12px;display:flex;flex-direction:column;gap:10px;overflow-y:auto;">
+      ${AGENTS.map((a,i) => agentCard(a, false, i, 'AGENTS')).join('')}
+      ${custom.map((a,i) => agentCard(a, true, i, 'custom')).join('')}
+    </div>`;
+}
+
+function agentCard(a, isCustom, i, src) {
+  const activateFn = src === 'custom' ? `activateCustomAgent(${i})` : `activateAgent(AGENTS[${i}])`;
+  return `<div class="agent-card" style="border-top:3px solid ${a.color}">
+    <div class="agent-header">
+      <div class="agent-icon" style="background:${a.color}20">${a.icon}</div>
+      <div style="flex:1">
+        <div class="agent-name">${a.name}</div>
+        <span class="agent-type">${a.type}</span>
+      </div>
+      ${isCustom ? `<button onclick="deleteCustomAgent(${i})" style="background:transparent;border:none;color:var(--text3);cursor:pointer;font-size:16px;padding:0;" title="Delete">✕</button>` : ''}
+    </div>
+    <div class="agent-desc">${a.desc}</div>
+    <div class="agent-tools">${(a.tools||[]).map(t => `<span class="tool-tag">${t}</span>`).join('')}</div>
+    <button class="agent-btn" onclick="${activateFn}">→ Activate Agent</button>
+  </div>`;
 }
 
 function activateAgent(agent) {
   switchTab('chat', document.getElementById('btn-chat'));
-  addMessage('system', `Agent activated: ${agent.name}`);
-  const input = document.getElementById('chat-input');
-  input.value = `/agent ${agent.type} `;
-  autoResize(input);
-  input.focus();
+  addMessage('system', 'Agent activated: ' + agent.name);
+  state._agentPrompt = agent.prompt;
+  addMessage('assistant', '🤖 **' + agent.name + '** activated!\n\nTools: ' + agent.tools.join(', ') + '\n\n' + agent.desc + '\n\nHow can I help you?');
+}
 
-  // Add agent context to next message
-  state._pendingAgentPrompt = agent.prompt;
-  addMessage('assistant', `🤖 **${agent.name}** activated!\n\nTools: ${agent.tools.join(', ')}\n\n${agent.desc}\n\nHow can I help you?`);
+function activateCustomAgent(idx) {
+  const arr = getCustomAgents();
+  if (arr[idx]) activateAgent(arr[idx]);
+}
+
+function showCreateAgent() {
+  document.getElementById('create-agent-modal').classList.add('show');
+}
+
+function showAgentsMarketplace() {
+  const modal = document.getElementById('marketplace-modal');
+  const content = document.getElementById('marketplace-content');
+  const installed = getCustomAgents().map(a => a.type);
+  content.innerHTML = '<div style="font-size:14px;font-weight:700;margin-bottom:12px;">🛒 Agents Store</div>' +
+    MARKETPLACE_AGENTS.map(a => {
+      const isInstalled = installed.includes(a.type);
+      const data = JSON.stringify(a).replace(/"/g,'&quot;');
+      return `<div style="background:var(--bg3);border:1px solid var(--border);border-left:3px solid ${a.color};border-radius:8px;padding:12px;margin-bottom:8px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <span style="font-size:20px">${a.icon}</span>
+          <div style="flex:1"><div style="font-weight:700;font-size:12px">${a.name}</div><div style="font-size:10px;color:var(--accent)">${a.type}</div></div>
+          ${isInstalled
+            ? '<span style="font-size:10px;color:var(--green);background:rgba(63,185,80,0.1);padding:2px 8px;border-radius:10px;">Installed</span>'
+            : `<button onclick="installAgent(${data})" style="padding:4px 10px;background:var(--accent);border:none;color:#000;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">Install</button>`}
+        </div>
+        <div style="font-size:11px;color:var(--text2);margin-bottom:6px">${a.desc}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px">${(a.tools||[]).map(t=>`<span style="font-size:10px;background:var(--bg4);color:var(--text3);padding:2px 6px;border-radius:4px">${t}</span>`).join('')}</div>
+      </div>`;
+    }).join('');
+  modal.classList.add('show');
+}
+
+function installAgent(agent) {
+  const arr = getCustomAgents();
+  if (arr.find(a => a.type === agent.type)) { toast('Already installed'); return; }
+  arr.push(agent);
+  saveCustomAgents(arr);
+  renderAgents();
+  toast('Installed: ' + agent.name);
+  showAgentsMarketplace();
+}
+
+function saveNewAgent() {
+  const name = document.getElementById('new-agent-name').value.trim();
+  const type = document.getElementById('new-agent-type').value.trim();
+  const desc = document.getElementById('new-agent-desc').value.trim();
+  const prompt = document.getElementById('new-agent-prompt').value.trim();
+  const icon = document.getElementById('new-agent-icon').value.trim() || '🤖';
+  const color = document.getElementById('new-agent-color').value || '#888888';
+  if (!name || !type) { toast('Name and type required'); return; }
+  const arr = getCustomAgents();
+  arr.push({ icon, name, type: type.toLowerCase().replace(/\s+/g,'-'), desc: desc || name, prompt, color, tools: ['Read','Bash','WebSearch'] });
+  saveCustomAgents(arr);
+  renderAgents();
+  document.getElementById('create-agent-modal').classList.remove('show');
+  ['new-agent-name','new-agent-type','new-agent-desc','new-agent-prompt'].forEach(id => { document.getElementById(id).value = ''; });
+  toast('Agent created: ' + name);
 }
 
 // ==================== TERMINAL ====================
