@@ -675,10 +675,18 @@ const state = {
   _modalProvider: 'gemini',
 };
 
-// Auto-correct provider from saved key — fixes stale 'demo' when a real key exists
+// Auto-correct provider AND model from saved key
 if (state.apiKey) {
   const det = detectProvider(state.apiKey);
-  if (det && det !== 'demo') state.provider = det; // always trust key format over stored provider
+  if (det && det !== 'demo') {
+    state.provider = det;
+    // Also fix model if it doesn't belong to the detected provider
+    const provCfg = PROVIDERS[det];
+    if (provCfg && !provCfg.models.find(m => m.value === state.model)) {
+      state.model = provCfg.defaultModel;
+      localStorage.setItem('cc_model', state.model);
+    }
+  }
   localStorage.setItem('cc_provider', state.provider);
 }
 
@@ -1058,45 +1066,78 @@ async function callAnthropic(thinkingId) {
 }
 
 // ---- Gemini ----
-async function callGemini(thinkingId) {
-  // Convert messages: Gemini uses "user"/"model" roles, no system in contents
-  const history = state.messages.slice(-20);
-  const contents = history.map(m => ({
-    role: m.role === 'assistant' ? 'model' : 'user',
-    parts: [{ text: m.content }],
-  }));
+async function callGemini(thinkingId, retriesLeft = 1) {
+  // Ensure model is actually a Gemini model — auto-correct if stale value from another provider
+  if (!state.model.startsWith('gemini-')) {
+    state.model = PROVIDERS.gemini.defaultModel;
+    localStorage.setItem('cc_model', state.model);
+    const el = document.getElementById('status-model');
+    if (el) el.textContent = state.model;
+  }
+
+  // Build contents with strict Gemini rules:
+  // - roles must be 'user' or 'model' (not 'assistant')
+  // - first message must be 'user'
+  // - roles must strictly alternate (no consecutive same role)
+  // - empty content is not allowed
+  const rawHistory = state.messages
+    .filter(m => (m.role === 'user' || m.role === 'assistant') && m.content && m.content.trim())
+    .slice(-20);
+
+  const contents = [];
+  for (const m of rawHistory) {
+    const role = m.role === 'assistant' ? 'model' : 'user';
+    const last = contents[contents.length - 1];
+    if (last && last.role === role) {
+      // Merge consecutive same-role messages instead of dropping
+      last.parts[0].text += '\n' + m.content;
+    } else {
+      contents.push({ role, parts: [{ text: m.content }] });
+    }
+  }
+  // Gemini requires first turn to be user
+  while (contents.length && contents[0].role !== 'user') contents.shift();
+  // Must have at least one message
+  if (!contents.length) contents.push({ role: 'user', parts: [{ text: 'Hello' }] });
 
   const resp = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${state.model}:streamGenerateContent?alt=sse&key=${state.apiKey}`,
+    'https://generativelanguage.googleapis.com/v1beta/models/' + state.model + ':streamGenerateContent?alt=sse&key=' + state.apiKey,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents,
         systemInstruction: { parts: [{ text: state.settings.systemPrompt }] },
-        generationConfig: {
-          maxOutputTokens: state.settings.maxTokens,
-          temperature: 0.9,
-        },
+        generationConfig: { maxOutputTokens: state.settings.maxTokens, temperature: 0.9 },
       }),
     }
   );
+
   if (!resp.ok) {
     const err = await resp.json().catch(() => ({}));
-    const msg = err.error?.message || 'Unknown error';
-    if (resp.status === 429) {
-      // Auto-retry once after 3s for rate limit
-      setStatus('Rate limited — retrying in 3s...', 'yellow');
-      await new Promise(r => setTimeout(r, 3000));
-      return callGemini(thinkingId); // retry
+    const msg = (err.error && err.error.message) || ('HTTP ' + resp.status);
+    if (resp.status === 429 && retriesLeft > 0) {
+      setStatus('Rate limited — retrying in 4s...', 'yellow');
+      await new Promise(r => setTimeout(r, 4000));
+      return callGemini(thinkingId, retriesLeft - 1);
     }
-    if (resp.status === 400) throw new Error('Invalid request — check your Gemini key at aistudio.google.com');
-    if (resp.status === 403) throw new Error('API key rejected — get a free key at aistudio.google.com');
-    if (resp.status === 401) throw new Error('Unauthorized — your Gemini key may be invalid or revoked');
-    throw new Error('Gemini API: ' + msg);
+    if (resp.status === 429) throw new Error('Gemini rate limit reached (15 req/min free tier). Wait a minute and try again.');
+    if (resp.status === 400) throw new Error('Gemini 400: ' + msg + '\n\nTip: Try a shorter conversation or different model.');
+    if (resp.status === 401 || resp.status === 403) throw new Error('Gemini key rejected. Get a free key at aistudio.google.com');
+    if (resp.status === 404) {
+      // Auto-reset to default Gemini model and retry once
+      state.model = PROVIDERS.gemini.defaultModel;
+      localStorage.setItem('cc_model', state.model);
+      const el = document.getElementById('status-model'); if (el) el.textContent = state.model;
+      if (retriesLeft > 0) { toast('Auto-switched to ' + state.model); return callGemini(thinkingId, 0); }
+      throw new Error('Model not found on Gemini. Switched to ' + state.model + ' — please try again.');
+    }
+    throw new Error('Gemini: ' + msg);
   }
-  return streamSSE(resp, thinkingId, json => {
-    return json.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  return streamSSE(resp, thinkingId, function(json) {
+    return (json.candidates && json.candidates[0] && json.candidates[0].content &&
+            json.candidates[0].content.parts && json.candidates[0].content.parts[0] &&
+            json.candidates[0].content.parts[0].text) || '';
   });
 }
 
@@ -1927,7 +1968,10 @@ function saveApiKey() {
   }
 
   state.apiKey = key;
-  state.model = model;
+  // Validate model belongs to the saved provider; auto-correct if not
+  const finalProvCfg = PROVIDERS[state.provider];
+  const modelIsValid = finalProvCfg && finalProvCfg.models.find(m => m.value === model);
+  state.model = modelIsValid ? model : (finalProvCfg ? finalProvCfg.defaultModel : model);
   localStorage.setItem('cc_api_key', key);
   localStorage.setItem('cc_model', model);
   localStorage.setItem('cc_provider', state.provider);
