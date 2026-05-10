@@ -350,12 +350,12 @@
           <div class="msg assistant">
             <div class="msg-avatar">C</div>
             <div class="msg-bubble">
-              Welcome to <strong>Claude Code Mobile</strong>! I'm your AI coding assistant.<br><br>
-              I have access to:<br>
-              • <strong>15 Skills</strong> — /init, /review, /security-review, and more<br>
-              • <strong>8 Agents</strong> — Explore, Plan, Code, Test, and more<br>
-              • <strong>Full tool suite</strong> — Read, Write, Edit, Bash, WebSearch<br><br>
-              Set your API key via the key icon above, then ask me anything!
+              Welcome to <strong>Claude Code Mobile</strong>! 🎭 Running in <strong>Demo Mode</strong>.<br><br>
+              • <strong>15 Skills</strong> pre-installed — /init, /review, /fix, /test…<br>
+              • <strong>8 Agents</strong> — Explore, Plan, Code, Security, Docs…<br>
+              • <strong>Full tool suite</strong> — Editor, Terminal, File Browser<br><br>
+              Try any command now! For real AI, tap 🔑 above and add a<br>
+              <strong>free Gemini key</strong> from aistudio.google.com
             </div>
           </div>
         </div>
@@ -510,27 +510,74 @@ console.log(greet('Developer'));
 <div class="modal" id="api-modal">
   <div class="modal-content">
     <div class="modal-handle"></div>
-    <div class="modal-title">🔑 Configure API Key</div>
-    <p style="font-size:12px;color:var(--text2);margin-bottom:14px;line-height:1.5;">Enter your Anthropic API key to enable real AI responses. Keys are stored in localStorage only.</p>
-    <div style="display:flex;gap:8px;margin-bottom:12px;">
-      <input id="api-key-modal-input" type="password" placeholder="sk-ant-api03-..." style="flex:1;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:8px;font-family:var(--font);font-size:13px;outline:none;">
-      <button onclick="toggleShowKey()" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);padding:10px;border-radius:8px;cursor:pointer;">👁</button>
+    <div class="modal-title">🔑 Configure Provider</div>
+
+    <!-- Provider tabs -->
+    <div style="display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;padding-bottom:2px;">
+      <button class="provider-tab active" onclick="selectProvider('gemini',this)" id="ptab-gemini" style="flex-shrink:0;">
+        <span style="font-size:16px;">🟦</span> Gemini <span style="font-size:10px;background:#1a73e820;color:#4285f4;padding:1px 5px;border-radius:8px;margin-left:2px;">FREE</span>
+      </button>
+      <button class="provider-tab" onclick="selectProvider('anthropic',this)" id="ptab-anthropic" style="flex-shrink:0;">
+        <span style="font-size:16px;">🟠</span> Anthropic
+      </button>
+      <button class="provider-tab" onclick="selectProvider('openai',this)" id="ptab-openai" style="flex-shrink:0;">
+        <span style="font-size:16px;">🟢</span> OpenAI
+      </button>
+      <button class="provider-tab" onclick="selectProvider('demo',this)" id="ptab-demo" style="flex-shrink:0;">
+        <span style="font-size:16px;">🎭</span> Demo
+      </button>
     </div>
-    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
-      <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;">Model</div>
-      <select id="model-select" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;font-family:var(--font);font-size:13px;outline:none;">
-        <option value="claude-sonnet-4-6">claude-sonnet-4-6 (Recommended)</option>
-        <option value="claude-opus-4-7">claude-opus-4-7 (Most Capable)</option>
-        <option value="claude-haiku-4-5-20251001">claude-haiku-4-5 (Fastest)</option>
-        <option value="claude-opus-4-5">claude-opus-4-5</option>
-      </select>
+
+    <!-- Provider info banner -->
+    <div id="provider-info" style="background:var(--bg3);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--text2);line-height:1.6;"></div>
+
+    <!-- Key input -->
+    <div id="key-input-area" style="display:flex;gap:8px;margin-bottom:12px;">
+      <input id="api-key-modal-input" type="password" placeholder="" oninput="onKeyInput(this.value)"
+        style="flex:1;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:8px;font-family:var(--font);font-size:13px;outline:none;">
+      <button onclick="toggleShowKey()" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);padding:10px;border-radius:8px;cursor:pointer;flex-shrink:0;">👁</button>
     </div>
+
+    <!-- Detected provider badge -->
+    <div id="detected-badge" style="display:none;margin-bottom:10px;font-size:12px;color:var(--green);display:flex;align-items:center;gap:6px;">
+      <span>✓</span><span id="detected-text"></span>
+    </div>
+
+    <!-- Model selector -->
+    <div style="margin-bottom:16px;">
+      <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Model</div>
+      <select id="model-select" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;font-family:var(--font);font-size:13px;outline:none;width:100%;"></select>
+    </div>
+
     <div style="display:flex;gap:8px;">
-      <button onclick="saveApiKey()" style="flex:1;padding:12px;background:var(--accent);color:#000;border:none;border-radius:8px;font-family:var(--font);font-size:13px;font-weight:700;cursor:pointer;">Save Key</button>
+      <button onclick="saveApiKey()" style="flex:1;padding:12px;background:var(--accent);color:#000;border:none;border-radius:8px;font-family:var(--font);font-size:13px;font-weight:700;cursor:pointer;">Save & Connect</button>
       <button onclick="closeModal('api-modal')" style="padding:12px 16px;background:var(--bg3);color:var(--text2);border:1px solid var(--border);border-radius:8px;font-family:var(--font);font-size:13px;cursor:pointer;">Cancel</button>
     </div>
   </div>
 </div>
+
+<style>
+.provider-tab {
+  padding: 8px 12px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: var(--font);
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.provider-tab.active {
+  background: rgba(217,119,6,0.15);
+  border-color: var(--accent);
+  color: var(--text);
+}
+</style>
 
 <!-- Toast -->
 <div id="toast"></div>
@@ -539,10 +586,82 @@ console.log(greet('Developer'));
 <div class="ctx-menu" id="ctx-menu"></div>
 
 <script>
+// ==================== PROVIDER CONFIG ====================
+const PROVIDERS = {
+  gemini: {
+    name: 'Google Gemini',
+    color: '#4285f4',
+    free: true,
+    keyPrefix: 'AIza',
+    keyPlaceholder: 'AIzaSy...',
+    keyHint: '🟦 Get a FREE key at aistudio.google.com → Get API key (no credit card needed)',
+    models: [
+      { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash — Free ⚡' },
+      { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash — Free' },
+      { value: 'gemini-2.5-flash-preview-05-20', label: 'Gemini 2.5 Flash Preview' },
+      { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
+    ],
+    defaultModel: 'gemini-2.0-flash',
+  },
+  anthropic: {
+    name: 'Anthropic Claude',
+    color: '#d97706',
+    free: false,
+    keyPrefix: 'sk-ant-',
+    keyPlaceholder: 'sk-ant-api03-...',
+    keyHint: '🟠 Get a key at console.anthropic.com — requires a paid account',
+    models: [
+      { value: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6 (Recommended)' },
+      { value: 'claude-opus-4-7', label: 'Claude Opus 4.7 (Most Capable)' },
+      { value: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5 (Fastest)' },
+      { value: 'claude-opus-4-5', label: 'Claude Opus 4.5' },
+    ],
+    defaultModel: 'claude-sonnet-4-6',
+  },
+  openai: {
+    name: 'OpenAI / Compatible',
+    color: '#3fb950',
+    free: false,
+    keyPrefix: 'sk-',
+    keyPlaceholder: 'sk-...',
+    keyHint: '🟢 OpenAI key from platform.openai.com — or any OpenAI-compatible endpoint',
+    models: [
+      { value: 'gpt-4o', label: 'GPT-4o' },
+      { value: 'gpt-4o-mini', label: 'GPT-4o Mini (Cheaper)' },
+      { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
+      { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo (Cheapest)' },
+    ],
+    defaultModel: 'gpt-4o',
+  },
+  demo: {
+    name: 'Demo Mode',
+    color: '#bc8cff',
+    free: true,
+    keyPrefix: '',
+    keyPlaceholder: '(no key needed)',
+    keyHint: '🎭 Demo mode uses pre-built responses — no API key required. Great for exploring the UI!',
+    models: [
+      { value: 'demo-smart', label: 'Demo Smart (simulated GPT-4 level)' },
+      { value: 'demo-fast', label: 'Demo Fast (instant replies)' },
+    ],
+    defaultModel: 'demo-smart',
+  },
+};
+
+function detectProvider(key) {
+  if (!key || key.trim() === '') return 'demo';
+  const k = key.trim();
+  if (k.startsWith('AIza')) return 'gemini';
+  if (k.startsWith('sk-ant-')) return 'anthropic';
+  if (k.startsWith('sk-')) return 'openai';
+  return null; // unknown
+}
+
 // ==================== STATE ====================
 const state = {
   apiKey: localStorage.getItem('cc_api_key') || '',
-  model: localStorage.getItem('cc_model') || 'claude-sonnet-4-6',
+  provider: localStorage.getItem('cc_provider') || 'demo',
+  model: localStorage.getItem('cc_model') || 'demo-smart',
   messages: [],
   sidebarOpen: false,
   currentTab: 'chat',
@@ -553,7 +672,14 @@ const state = {
   files: {},
   activeTool: null,
   streaming: false,
+  _modalProvider: 'gemini',
 };
+
+// Auto-detect provider from saved key on startup
+if (state.apiKey) {
+  const det = detectProvider(state.apiKey);
+  if (det && det !== state.provider) state.provider = det;
+}
 
 // Defaults
 state.settings = Object.assign({
@@ -734,13 +860,28 @@ function init() {
 }
 
 function checkApiKey() {
-  if (!state.apiKey) {
-    document.getElementById('api-key-banner').style.display = 'block';
+  const prov = PROVIDERS[state.provider] || PROVIDERS.demo;
+  const banner = document.getElementById('api-key-banner');
+  if (state.provider === 'demo') {
+    banner.style.display = 'block';
+    banner.style.background = 'rgba(188,140,255,0.1)';
+    banner.style.borderBottomColor = 'rgba(188,140,255,0.3)';
+    banner.style.color = '#bc8cff';
+    banner.textContent = '🎭 Demo Mode — tap key icon to connect a free Gemini API key';
+    setStatus('Demo Mode', 'yellow');
+  } else if (!state.apiKey) {
+    banner.style.display = 'block';
+    banner.style.background = 'rgba(217,119,6,0.1)';
+    banner.style.borderBottomColor = 'rgba(217,119,6,0.3)';
+    banner.style.color = 'var(--accent)';
+    banner.textContent = '⚠ No API key set — tap to configure';
     setStatus('No API key', 'red');
   } else {
-    document.getElementById('api-key-banner').style.display = 'none';
-    setStatus('Ready', 'green');
+    banner.style.display = 'none';
+    setStatus(prov.name + ' ✓', 'green');
   }
+  const modelEl = document.getElementById('status-model');
+  if (modelEl) modelEl.textContent = state.model;
 }
 
 // ==================== LAYOUT ====================
@@ -804,8 +945,8 @@ async function sendMessage() {
   addMessage('user', text);
   saveHistory();
 
-  if (!state.apiKey) {
-    addMessage('assistant', '⚠️ Please set your API key first. Tap the key icon in the top bar or type /apikey');
+  if (!state.apiKey && state.provider !== 'demo') {
+    addMessage('assistant', '⚠️ No API key set. Tap 🔑 above to add a **free Gemini key** or switch to **Demo Mode**.');
     return;
   }
 
@@ -821,96 +962,219 @@ function handleCommand(text) {
   }
   // Treat as a skill prompt
   addMessage('user', text);
-  if (!state.apiKey) {
-    addMessage('assistant', `⚠️ No API key set. Simulating ${cmd}...\n\nThis would run the **${cmd}** skill against your codebase. Set your API key to enable real execution.`);
+  if (!state.apiKey && state.provider !== 'demo') {
+    addMessage('assistant', `⚠️ No API key set. Tap 🔑 to add a **free Gemini key** or switch to **Demo Mode** to simulate ${cmd}.`);
     return;
   }
   callClaude(text);
 }
 
+// ==================== PROVIDER ROUTING ====================
 async function callClaude(userText) {
   state.streaming = true;
   document.getElementById('send-btn').disabled = true;
   setStatus('Thinking...', 'yellow');
 
   const thinkingId = 'thinking-' + Date.now();
-  addRawMessage(`<div class="msg assistant" id="${thinkingId}"><div class="msg-avatar">C</div><div class="msg-bubble"><div class="thinking">Processing your request</div></div></div>`);
-
-  const systemPrompt = state.settings.systemPrompt;
-  const msgs = state.messages.slice(-20).map(m => ({ role: m.role, content: m.content }));
+  const prov = PROVIDERS[state.provider] || PROVIDERS.demo;
+  addRawMessage(`<div class="msg assistant" id="${thinkingId}"><div class="msg-avatar">C</div><div class="msg-bubble"><div class="thinking">Asking ${prov.name}</div></div></div>`);
 
   try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': state.apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
-      },
-      body: JSON.stringify({
-        model: state.model,
-        max_tokens: state.settings.maxTokens,
-        system: systemPrompt,
-        messages: msgs,
-        stream: true,
-      }),
-    });
-
-    if (!resp.ok) {
-      const err = await resp.json().catch(() => ({}));
-      throw new Error(err.error?.message || `API error ${resp.status}`);
-    }
-
-    // Stream response
-    const reader = resp.body.getReader();
-    const decoder = new TextDecoder();
     let fullText = '';
-    let buffer = '';
-
-    const thinkEl = document.getElementById(thinkingId);
-    if (thinkEl) thinkEl.remove();
-    const msgId = 'msg-' + Date.now();
-    addRawMessage(`<div class="msg assistant" id="${msgId}"><div class="msg-avatar">C</div><div class="msg-bubble typing-cursor" id="bubble-${msgId}"></div></div>`);
-    const bubble = document.getElementById('bubble-' + msgId);
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop();
-
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          const data = line.slice(6).trim();
-          if (data === '[DONE]') continue;
-          try {
-            const json = JSON.parse(data);
-            if (json.type === 'content_block_delta' && json.delta?.text) {
-              fullText += json.delta.text;
-              bubble.innerHTML = formatMessage(fullText);
-              scrollChat();
-            }
-          } catch {}
-        }
-      }
+    if (state.provider === 'demo') {
+      fullText = await callDemo(userText);
+    } else if (state.provider === 'gemini') {
+      fullText = await callGemini(thinkingId);
+    } else if (state.provider === 'anthropic') {
+      fullText = await callAnthropic(thinkingId);
+    } else if (state.provider === 'openai') {
+      fullText = await callOpenAI(thinkingId);
     }
 
-    bubble.classList.remove('typing-cursor');
-    state.messages.push({ role: 'assistant', content: fullText });
+    // Demo returns text without adding to DOM — add it now
+    if (state.provider === 'demo') {
+      const thinkEl = document.getElementById(thinkingId);
+      if (thinkEl) thinkEl.remove();
+      // addMessage pushes to state.messages too, so add to DOM only
+      const msgs = document.getElementById('chat-messages');
+      const div = document.createElement('div');
+      div.className = 'msg assistant';
+      div.innerHTML = `<div class="msg-avatar">C</div><div class="msg-bubble">${formatMessage(fullText)}</div>`;
+      msgs.appendChild(div);
+      scrollChat();
+      state.messages.push({ role: 'assistant', content: fullText });
+    }
+    // Streaming providers (Gemini/Anthropic/OpenAI) already pushed via streamSSE
     saveHistory();
-    setStatus('Ready', 'green');
-
+    setStatus(prov.name + ' ✓', 'green');
   } catch (err) {
     const thinkEl = document.getElementById(thinkingId);
     if (thinkEl) thinkEl.remove();
-    addMessage('assistant', `❌ Error: ${err.message}`);
+    addMessage('assistant', `❌ **${prov.name} Error:** ${err.message}\n\nTip: Check your API key or switch to Demo Mode via the key icon.`);
     setStatus('Error', 'red');
   }
 
   state.streaming = false;
   document.getElementById('send-btn').disabled = false;
+}
+
+// ---- Shared streaming bubble helper ----
+function createStreamBubble(thinkingId) {
+  const thinkEl = document.getElementById(thinkingId);
+  if (thinkEl) thinkEl.remove();
+  const msgId = 'msg-' + Date.now();
+  addRawMessage(`<div class="msg assistant" id="${msgId}"><div class="msg-avatar">C</div><div class="msg-bubble typing-cursor" id="bubble-${msgId}"></div></div>`);
+  return document.getElementById('bubble-' + msgId);
+}
+
+// ---- Anthropic ----
+async function callAnthropic(thinkingId) {
+  const msgs = state.messages.slice(-20).map(m => ({ role: m.role, content: m.content }));
+  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': state.apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: state.model,
+      max_tokens: state.settings.maxTokens,
+      system: state.settings.systemPrompt,
+      messages: msgs,
+      stream: true,
+    }),
+  });
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err.error?.message || `HTTP ${resp.status}`);
+  }
+  return streamSSE(resp, thinkingId, json => {
+    if (json.type === 'content_block_delta') return json.delta?.text || '';
+    return '';
+  });
+}
+
+// ---- Gemini ----
+async function callGemini(thinkingId) {
+  // Convert messages: Gemini uses "user"/"model" roles, no system in contents
+  const history = state.messages.slice(-20);
+  const contents = history.map(m => ({
+    role: m.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: m.content }],
+  }));
+
+  const resp = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${state.model}:streamGenerateContent?alt=sse&key=${state.apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents,
+        systemInstruction: { parts: [{ text: state.settings.systemPrompt }] },
+        generationConfig: {
+          maxOutputTokens: state.settings.maxTokens,
+          temperature: 0.9,
+        },
+      }),
+    }
+  );
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    const msg = err.error?.message || `HTTP ${resp.status}`;
+    if (resp.status === 400) throw new Error(msg + ' — check your Gemini key is valid');
+    if (resp.status === 429) throw new Error('Rate limit hit — wait a moment and retry');
+    throw new Error(msg);
+  }
+  return streamSSE(resp, thinkingId, json => {
+    return json.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  });
+}
+
+// ---- OpenAI-compatible ----
+async function callOpenAI(thinkingId) {
+  const msgs = [
+    { role: 'system', content: state.settings.systemPrompt },
+    ...state.messages.slice(-20).map(m => ({ role: m.role, content: m.content })),
+  ];
+  const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${state.apiKey}`,
+    },
+    body: JSON.stringify({
+      model: state.model,
+      max_tokens: state.settings.maxTokens,
+      messages: msgs,
+      stream: true,
+    }),
+  });
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err.error?.message || `HTTP ${resp.status}`);
+  }
+  return streamSSE(resp, thinkingId, json => {
+    return json.choices?.[0]?.delta?.content || '';
+  });
+}
+
+// ---- Shared SSE reader ----
+async function streamSSE(resp, thinkingId, extractText) {
+  const bubble = createStreamBubble(thinkingId);
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let fullText = '';
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop();
+
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      const data = line.slice(6).trim();
+      if (data === '[DONE]') continue;
+      try {
+        const json = JSON.parse(data);
+        const chunk = extractText(json);
+        if (chunk) {
+          fullText += chunk;
+          bubble.innerHTML = formatMessage(fullText);
+          scrollChat();
+        }
+      } catch {}
+    }
+  }
+  bubble.classList.remove('typing-cursor');
+  state.messages.push({ role: 'assistant', content: fullText });
+  return fullText;
+}
+
+// ---- Demo mode with smart simulated responses ----
+const DEMO_RESPONSES = [
+  { match: /hello|hi|hey/i, reply: `👋 Hello! I'm Claude Code in **Demo Mode**.\n\nI'm simulating AI responses so you can explore the full UI without an API key.\n\nTo get real AI responses, tap the 🔑 key icon and add a **free Gemini API key** from [aistudio.google.com](https://aistudio.google.com).` },
+  { match: /gemini|api key|free key/i, reply: `## Getting a Free Gemini API Key\n\n1. Go to **aistudio.google.com**\n2. Sign in with your Google account\n3. Click **"Get API key"** → **"Create API key"**\n4. Copy the key (starts with \`AIza...\`)\n5. Tap 🔑 in this app → paste your key\n\nThe free tier includes:\n- **gemini-2.0-flash** ✅ Free\n- **gemini-1.5-flash** ✅ Free\n- 15 requests/minute, 1M tokens/day\n\nNo credit card needed!` },
+  { match: /\/init|initialize|claude\.md/i, reply: `## /init — Initializing CLAUDE.md\n\n\`\`\`markdown\n# Claude Code Project\n\n## Architecture\n- **Stack:** Node.js, Express, SQLite\n- **Entry:** src/index.js\n- **Config:** .claude/settings.json\n\n## Commands\n- \`npm start\` — Start development server\n- \`npm test\` — Run test suite\n- \`npm run lint\` — Check code style\n\n## Key Files\n- \`src/index.js\` — App entry point\n- \`src/utils.js\` — Shared utilities\n- \`CLAUDE.md\` — This file\n\`\`\`\n\nCLAUDE.md created! Claude will now read this on every session start.` },
+  { match: /\/review|review|pull request|pr/i, reply: `## /review — Code Review\n\n**Summary:** 3 files changed, 47 insertions, 12 deletions\n\n### Issues Found\n\n🔴 **High** — SQL injection risk in \`src/db.js:34\`\n\`\`\`js\n// Vulnerable:\ndb.query(\`SELECT * FROM users WHERE id = ${userId}\`)\n// Fix:\ndb.query('SELECT * FROM users WHERE id = ?', [userId])\n\`\`\`\n\n🟡 **Medium** — Missing error handling in \`src/api.js:78\`\n\n🟢 **Good** — Clean async/await usage throughout\n\n**Verdict:** Fix SQL injection before merging.` },
+  { match: /\/fix|bug|error|broken/i, reply: `## /fix — Bug Analysis\n\nScanning codebase for issues...\n\n**Found 2 bugs:**\n\n### Bug 1: Null reference at \`src/utils.js:23\`\n\`\`\`js\n// Before (crashes if user is null):\nconst name = user.profile.name;\n\n// After (safe):\nconst name = user?.profile?.name ?? 'Unknown';\n\`\`\`\n\n### Bug 2: Memory leak in event listener\n\`\`\`js\n// Before:\nwindow.addEventListener('resize', handler);\n\n// After (cleanup on unmount):\nconst cleanup = () => window.removeEventListener('resize', handler);\nreturn cleanup;\n\`\`\`\n\nBoth fixes applied ✅` },
+  { match: /\/explain|explain|what does|how does/i, reply: `## /explain — Code Explanation\n\nThis code implements a **debounce function** — a performance optimization that delays calling a function until after a user stops performing an action (like typing).\n\n**How it works:**\n1. When called, starts a timer\n2. If called again before timer fires → resets timer\n3. Only executes after the delay with no new calls\n\n**Use cases:** Search inputs, window resize handlers, API calls on keypress\n\n**Time complexity:** O(1) — constant time per invocation` },
+  { match: /\/test|test|jest|unit test/i, reply: `## /test — Generated Test Suite\n\n\`\`\`javascript\nimport { describe, it, expect, vi } from 'vitest';\nimport { greet, add, fetchUser } from './utils.js';\n\ndescribe('greet()', () => {\n  it('returns greeting with name', () => {\n    expect(greet('Alice')).toBe('Hello, Alice!');\n  });\n  it('handles empty string', () => {\n    expect(greet('')).toBe('Hello, !');\n  });\n});\n\ndescribe('fetchUser()', () => {\n  it('fetches user by id', async () => {\n    const user = await fetchUser(1);\n    expect(user).toHaveProperty('id', 1);\n  });\n  it('throws on invalid id', async () => {\n    await expect(fetchUser(-1)).rejects.toThrow();\n  });\n});\n\`\`\`\n\n✅ 4 tests generated — run with \`npm test\`` },
+  { match: /\/security|security|owasp|vulnerability|injection/i, reply: `## /security-review — Security Audit\n\n### Critical Issues\n🔴 **SQL Injection** — \`db.js:34\` — use parameterized queries\n🔴 **XSS** — \`render.js:12\` — sanitize HTML with DOMPurify\n\n### High Issues\n🟠 **Hardcoded secrets** — \`config.js:5\` — move to .env\n🟠 **Missing CSRF token** — POST endpoints unprotected\n\n### Medium Issues\n🟡 **Outdated dependency** — express@4.17 has known CVEs\n🟡 **Missing rate limiting** — auth endpoints vulnerable to brute force\n\n### Good Practices Observed\n✅ HTTPS enforced\n✅ Password hashing with bcrypt\n✅ JWT expiration set\n\n**Risk Score: 6.2/10** — Fix critical issues before production.` },
+  { match: /skill|agent|feature|can you|what can/i, reply: `## What I Can Do\n\n**Skills (slash commands):**\n- \`/init\` — Initialize project docs\n- \`/review\` — Code review\n- \`/security-review\` — Security audit\n- \`/fix\` — Fix bugs automatically\n- \`/test\` — Generate test suites\n- \`/explain\` — Explain any code\n- \`/optimize\` — Performance improvements\n- \`/docs\` — Generate documentation\n\n**Agents (specialized modes):**\n- 🔭 **Explore** — Find code fast\n- 🗺️ **Plan** — Architecture design\n- 💻 **Code** — Full implementation\n- 🧪 **Test** — Test specialist\n- 🔒 **Security** — Vulnerability scanner\n\n**Tools:** Read, Write, Edit, Bash, WebSearch, WebFetch, TodoWrite, Agent\n\nConnect a **free Gemini key** to run these for real!` },
+];
+
+async function callDemo(userText) {
+  // Simulate network delay
+  await new Promise(r => setTimeout(r, 600 + Math.random() * 800));
+  const match = DEMO_RESPONSES.find(r => r.match.test(userText));
+  if (match) return match.reply;
+  // Generic response
+  return `I'm in **Demo Mode** and received: *"${userText.slice(0, 80)}${userText.length > 80 ? '...' : ''}"*\n\nIn real mode (with a Gemini or Anthropic key), I would:\n1. Analyze your request thoroughly\n2. Search relevant files and docs\n3. Execute the task with full tool access\n4. Return detailed, accurate results\n\n**Get a free Gemini key** at aistudio.google.com to unlock real AI responses! Tap 🔑 above.`;
 }
 
 function addMessage(role, content) {
@@ -1416,27 +1680,34 @@ async function pickDirectory() {
 
 // ==================== SETTINGS ====================
 function renderSettings() {
+  const prov = PROVIDERS[state.provider] || PROVIDERS.demo;
   const scroll = document.getElementById('settings-scroll');
+  const modelOptions = prov.models.map(m =>
+    `<option value="${m.value}" ${state.model===m.value?'selected':''}>${m.label}</option>`
+  ).join('');
   scroll.innerHTML = `
     <div class="settings-group">
-      <div class="settings-group-title">API</div>
+      <div class="settings-group-title">Provider &amp; API</div>
+      <div class="settings-item">
+        <div class="settings-label">
+          <div class="label-title">Provider</div>
+          <div class="label-desc" style="color:${prov.color}">${prov.name}${prov.free?' • Free tier':''}</div>
+        </div>
+        <button onclick="showApiKeyModal()" style="padding:6px 12px;background:var(--accent);border:none;color:#000;border-radius:6px;font-family:var(--font);font-size:12px;cursor:pointer;">Change</button>
+      </div>
       <div class="settings-item">
         <div class="settings-label">
           <div class="label-title">API Key</div>
-          <div class="label-desc">${state.apiKey ? '••••••••' + state.apiKey.slice(-4) : 'Not set'}</div>
+          <div class="label-desc">${state.provider==='demo'?'Demo mode — no key needed':state.apiKey?'••••••••'+state.apiKey.slice(-4):'Not set'}</div>
         </div>
-        <button onclick="showApiKeyModal()" style="padding:6px 12px;background:var(--accent);border:none;color:#000;border-radius:6px;font-family:var(--font);font-size:12px;cursor:pointer;">Set Key</button>
+        <button onclick="showApiKeyModal()" style="padding:6px 12px;background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:6px;font-family:var(--font);font-size:12px;cursor:pointer;">Edit</button>
       </div>
       <div class="settings-item">
         <div class="settings-label">
           <div class="label-title">Model</div>
           <div class="label-desc">Active AI model</div>
         </div>
-        <select class="settings-select" onchange="updateSetting('model',this.value)">
-          <option value="claude-sonnet-4-6" ${state.model==='claude-sonnet-4-6'?'selected':''}>Sonnet 4.6</option>
-          <option value="claude-opus-4-7" ${state.model==='claude-opus-4-7'?'selected':''}>Opus 4.7</option>
-          <option value="claude-haiku-4-5-20251001" ${state.model==='claude-haiku-4-5-20251001'?'selected':''}>Haiku 4.5</option>
-        </select>
+        <select class="settings-select" onchange="updateSetting('model',this.value)">${modelOptions}</select>
       </div>
       <div class="settings-item">
         <div class="settings-label">
@@ -1525,12 +1796,62 @@ function clearAllData() {
 // ==================== API KEY ====================
 function showApiKeyModal() {
   const modal = document.getElementById('api-modal');
-  const inp = document.getElementById('api-key-modal-input');
-  const modelSel = document.getElementById('model-select');
-  inp.value = state.apiKey;
-  modelSel.value = state.model;
+  // Set current provider tab active
+  const startProv = state.provider || 'gemini';
+  const tab = document.getElementById('ptab-' + startProv);
+  selectProvider(startProv, tab);
+  // Pre-fill key
+  document.getElementById('api-key-modal-input').value = state.apiKey;
+  if (state.apiKey) onKeyInput(state.apiKey);
   modal.classList.add('show');
-  setTimeout(() => inp.focus(), 100);
+  setTimeout(() => document.getElementById('api-key-modal-input').focus(), 150);
+}
+
+function selectProvider(prov, tabEl) {
+  state._modalProvider = prov;
+  document.querySelectorAll('.provider-tab').forEach(t => t.classList.remove('active'));
+  if (tabEl) tabEl.classList.add('active');
+
+  const cfg = PROVIDERS[prov];
+  const inp = document.getElementById('api-key-modal-input');
+  const keyArea = document.getElementById('key-input-area');
+  const info = document.getElementById('provider-info');
+  const modelSel = document.getElementById('model-select');
+
+  // Update placeholder and visibility
+  inp.placeholder = cfg.keyPlaceholder;
+  keyArea.style.display = (prov === 'demo') ? 'none' : 'flex';
+  info.textContent = cfg.keyHint;
+
+  // Update model dropdown
+  modelSel.innerHTML = cfg.models.map(m =>
+    `<option value="${m.value}" ${state.model === m.value ? 'selected' : ''}>${m.label}</option>`
+  ).join('');
+  // If current model not in new provider, reset to default
+  if (!cfg.models.find(m => m.value === state.model)) {
+    modelSel.value = cfg.defaultModel;
+  }
+
+  // Clear detected badge
+  document.getElementById('detected-badge').style.display = 'none';
+}
+
+function onKeyInput(val) {
+  const detected = detectProvider(val);
+  const badge = document.getElementById('detected-badge');
+  const detText = document.getElementById('detected-text');
+  if (detected && detected !== 'demo' && val.trim()) {
+    const prov = PROVIDERS[detected];
+    badge.style.display = 'flex';
+    detText.textContent = `Detected: ${prov.name}`;
+    // Auto-switch provider tab
+    const tab = document.getElementById('ptab-' + detected);
+    selectProvider(detected, tab);
+    badge.style.display = 'flex'; // re-show after selectProvider resets it
+    detText.textContent = `Auto-detected: ${prov.name}`;
+  } else {
+    badge.style.display = 'none';
+  }
 }
 
 function closeModal(id) {
@@ -1538,18 +1859,35 @@ function closeModal(id) {
 }
 
 function saveApiKey() {
-  const key = document.getElementById('api-key-modal-input').value.trim();
+  const prov = state._modalProvider || 'demo';
+  const key = prov === 'demo' ? '' : (document.getElementById('api-key-modal-input').value.trim());
   const model = document.getElementById('model-select').value;
-  if (key) {
-    state.apiKey = key;
-    state.model = model;
-    localStorage.setItem('cc_api_key', key);
-    localStorage.setItem('cc_model', model);
-    document.getElementById('status-model').textContent = model;
-    toast('API key saved!');
-    checkApiKey();
-    renderSettings();
+
+  // Validate key format for non-demo providers
+  if (prov !== 'demo' && key) {
+    const detected = detectProvider(key);
+    if (detected && detected !== prov) {
+      toast(`⚠ Key looks like a ${PROVIDERS[detected]?.name} key — switching provider`);
+      state.provider = detected;
+    } else if (!detected) {
+      toast('⚠ Key format unrecognized — saving anyway');
+    } else {
+      state.provider = prov;
+    }
+  } else {
+    state.provider = prov;
   }
+
+  state.apiKey = key;
+  state.model = model;
+  localStorage.setItem('cc_api_key', key);
+  localStorage.setItem('cc_model', model);
+  localStorage.setItem('cc_provider', state.provider);
+
+  const pName = PROVIDERS[state.provider]?.name || 'Demo';
+  toast(`✓ Connected to ${pName}`);
+  checkApiKey();
+  renderSettings();
   closeModal('api-modal');
 }
 
